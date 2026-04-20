@@ -1,6 +1,6 @@
 package services
 
-import (
+/*import (
 	"github.com/Aboody-Studios/ballr/backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -12,5 +12,9 @@ func PersistToDatabase(user *models.User) error {
 		return err
 	}
 
-	//TODO: save user to database
+	TODO: save user to database
+}*/
+
+func lol () string {
+	return "lol"
 }
