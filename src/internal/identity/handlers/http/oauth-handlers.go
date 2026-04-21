@@ -4,35 +4,35 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/Aboody-Studios/ballr/src/internal/identity/application"
 	"github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	"github.com/labstack/echo/v5"
 )
 
-// Activated when user clicks "sign in with google"
 func (h *IdentityHandler) SignInWithGoogleHandler(echoCtx *echo.Context) error {
 	state, stateErr := generateState()
 	if stateErr != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "state generation error"})
 	}
-	url := infrastructure.GoogleOauthConfig.AuthCodeURL(state)
 
+	config := infrastructure.GetGoogleOAuthConfig()
+	url := config.AuthCodeURL(state)
+
+	secure := os.Getenv("COOKIE_SECURE") == "true"
 	echoCtx.SetCookie(&http.Cookie{
 		Name:     "oauthstate",
 		Value:    state,
 		Expires:  time.Now().Add(15 * time.Minute),
 		HttpOnly: true,
-		Secure:   false, //TODO!: Set to true in production
+		Secure:   secure,
 	})
 
-	if err := echoCtx.Redirect(http.StatusSeeOther, url); err != nil {
-		return err
-	}
-	return nil
+	return echoCtx.Redirect(http.StatusSeeOther, url)
 }
 
-// Activated when user clicks allow and is used to catch "state" and "code" url params
 func (h *IdentityHandler) GoogleCallbackHandler(echoCtx *echo.Context) error {
 	cookie, err := echoCtx.Cookie("oauthstate")
 	if err != nil {
@@ -46,25 +46,30 @@ func (h *IdentityHandler) GoogleCallbackHandler(echoCtx *echo.Context) error {
 
 	codeQueryParam := echoCtx.QueryParam("code")
 	ctx := echoCtx.Request().Context()
-	googleToken, exchangeErr := infrastructure.GoogleOauthConfig.Exchange(ctx, codeQueryParam)
+
+	config := infrastructure.GetGoogleOAuthConfig()
+	googleToken, exchangeErr := config.Exchange(ctx, codeQueryParam)
 	if exchangeErr != nil {
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Google access token exchange error"})
 	}
 
-	JWTToken, googleFetchErr := h.authService.LoginWithGoogle(ctx, googleToken)
+	tokenPair, googleFetchErr := h.authService.LoginWithGoogle(ctx, googleToken)
 	if googleFetchErr != nil {
-		return googleFetchErr
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Google login failed"})
 	}
-	return echoCtx.JSON(http.StatusOK, map[string]string{"token": JWTToken})
+
+	return echoCtx.JSON(http.StatusOK, application.TokenResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		ExpiresIn:    tokenPair.ExpiresIn,
+	})
 }
 
 func generateState() (string, error) {
-	stateByteSlice := make([]byte, 16)
-	_, err := rand.Read(stateByteSlice)
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
 	if err != nil {
 		return "", err
 	}
-	state := base64.URLEncoding.EncodeToString(stateByteSlice)
-
-	return state, nil
+	return base64.URLEncoding.EncodeToString(b), nil
 }

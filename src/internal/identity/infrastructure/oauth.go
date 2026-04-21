@@ -7,18 +7,37 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
-var GoogleOauthConfig = &oauth2.Config{
-	ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-	ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-	RedirectURL:  "http://localhost:8080/auth/google/callback",
-	Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-	Endpoint:     google.Endpoint, // Tells the package to use Google's specific login URLs
+// GoogleOauthConfig is available for test override.
+// In production it is lazy-initialised by getGoogleOAuthConfig.
+var GoogleOauthConfig *oauth2.Config
+
+var googleOauthOnce sync.Once
+
+func GetGoogleOAuthConfig() *oauth2.Config {
+	if GoogleOauthConfig != nil {
+		return GoogleOauthConfig
+	}
+	googleOauthOnce.Do(func() {
+		redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+		if redirectURL == "" {
+			redirectURL = "http://localhost:8080/auth/google/callback"
+		}
+		GoogleOauthConfig = &oauth2.Config{
+			ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+			ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+			Endpoint:     google.Endpoint,
+		}
+	})
+	return GoogleOauthConfig
 }
 
 type GoogleOAuthUserInfoResponse struct {
@@ -31,7 +50,8 @@ type GoogleOAuthUserInfoResponse struct {
 type GoogleOAuthAPI struct{}
 
 func (g *GoogleOAuthAPI) FetchUserInfo(ctx context.Context, token *oauth2.Token) (*domain.GoogleUserInfo, error) {
-	client := GoogleOauthConfig.Client(ctx, token)
+	config := GetGoogleOAuthConfig()
+	client := config.Client(ctx, token)
 	res, getErr := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if getErr != nil {
 		return nil, getErr
