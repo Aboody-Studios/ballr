@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/application"
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
@@ -32,14 +31,6 @@ func (h *AnalysisHandler) UploadURLHandler(context *echo.Context) error {
 	var video domain.Video
 	if err := context.Bind(&video); err != nil {
 		return err
-	}
-
-	if !strings.HasSuffix(video.Name, ".mp4") {
-		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid file format"})
-	}
-
-	if video.Size > 3375000000 {
-		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid file size"})
 	}
 
 	uploadURL, s3Err := h.analysisService.GenerateUploadURL(context.Request().Context(), &video)

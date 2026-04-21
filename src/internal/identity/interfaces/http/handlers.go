@@ -31,7 +31,7 @@ func (h *IdentityHandler) SignUpHandler(context *echo.Context) error {
 		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid data"})
 	}
 
-	// TODO: Persist user when database layer is ready
+	// TODO!: Persist user when database layer is ready
 
 	token, err := h.authService.GenerateToken(user.Email)
 	if err != nil {
