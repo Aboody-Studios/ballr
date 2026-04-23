@@ -9,7 +9,6 @@ type PlayVal struct {
 	validator *validator.Validate
 }
 
-// New creates a new PlayVal validator instance.
 func New() *PlayVal {
 	return &PlayVal{
 		validator: validator.New(),

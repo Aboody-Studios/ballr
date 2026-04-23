@@ -20,15 +20,20 @@ func NewIdentityHandler(authService *application.Service) *IdentityHandler {
 	return &IdentityHandler{authService: authService}
 }
 
-// SignUpHandler handles user registration.
 func (h *IdentityHandler) SignUpHandler(context *echo.Context) error {
-	var user domain.User
-	if err := context.Bind(&user); err != nil {
+
+	var req application.SignupRequest
+	if err := context.Bind(&req); err != nil {
 		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
 
-	if err := context.Validate(&user); err != nil {
+	if err := context.Validate(&req); err != nil {
 		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid data"})
+	}
+
+	user, registerErr := h.authService.RegisterUser(&req)
+	if registerErr != nil {
+		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
 	// TODO!: Persist user when database layer is ready
