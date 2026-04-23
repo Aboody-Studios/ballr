@@ -61,6 +61,7 @@ type Service struct {
 	matchRepo       domain.MatchRepository
 	analysisRepo    domain.AnalysisRepository
 	storageProvider StorageProvider
+	jobQueue        domain.JobQueue
 }
 
 // NewService creates a new analysis application service with all dependencies.
@@ -69,12 +70,14 @@ func NewService(
 	matchRepo domain.MatchRepository,
 	analysisRepo domain.AnalysisRepository,
 	storageProvider StorageProvider,
+	jobQueue domain.JobQueue,
 ) *Service {
 	return &Service{
 		uploadService:   uploadService,
 		matchRepo:       matchRepo,
 		analysisRepo:    analysisRepo,
 		storageProvider: storageProvider,
+		jobQueue:        jobQueue,
 	}
 }
 
@@ -112,10 +115,10 @@ func (s *Service) GetAnalysisReport(ctx context.Context, matchID string) (*domai
 }
 
 // StartAnalysis initiates the CV analysis pipeline after video upload.
-func (s *Service) StartAnalysis(ctx context.Context, matchID string, shirtNumber int, position, videoURL string) error {
+func (s *Service) StartAnalysis(ctx context.Context, matchID string, userID string, shirtNumber int, position, videoURL string) error {
 	metadata := domain.MatchMetadata{}
 
-	match, err := domain.NewMatch(matchID, "", shirtNumber, position, metadata)
+	match, err := domain.NewMatch(matchID, userID, shirtNumber, position, metadata)
 	if err != nil {
 		return err
 	}
@@ -128,7 +131,16 @@ func (s *Service) StartAnalysis(ctx context.Context, matchID string, shirtNumber
 		return err
 	}
 
-	// TODO!: Push job to Redis/SQS queue for analysis worker
+	job := &domain.AnalysisJob{
+		MatchID:     matchID,
+		UserID:      userID,
+		VideoURL:    videoURL,
+		ShirtNumber: shirtNumber,
+		Position:    position,
+	}
+	if err := s.jobQueue.Push(ctx, job); err != nil {
+		return err
+	}
 
 	return nil
 }

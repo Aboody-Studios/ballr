@@ -5,6 +5,7 @@ import (
 
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/application"
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
+	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
 
@@ -95,7 +96,12 @@ func (h *AnalysisHandler) StartAnalysisHandler(c *echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed"})
 	}
 
-	err := h.analysisService.StartAnalysis(c.Request().Context(), req.MatchID, req.ShirtNumber, req.Position, req.VideoURL)
+	claims, err := delivery.ExtractToken(c)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	err = h.analysisService.StartAnalysis(c.Request().Context(), req.MatchID, claims.ID, req.ShirtNumber, req.Position, req.VideoURL)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start analysis"})
 	}
