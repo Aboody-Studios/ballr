@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/analysis/application"
@@ -11,7 +12,7 @@ import (
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	sharedhttp "github.com/Aboody-Studios/ballr/src/internal/shared/interfaces/http"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
-
+	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -23,10 +24,17 @@ func main() {
 	rdb := infrastructure.InitiateRedis()
 	godotenv.Load()
 	secretKey := os.Getenv("JWT_SECRET")
+	db, dbErr := infrastructure.InitiatePostgres()
+	if dbErr != nil {
+		log.Fatal("database connection error")
+	}
 
-	// TODO!: Wire up actual database repository when PostgreSQL is configured
-	// for now, using this placeholder
-	identityService := identityapplication.NewService(nil)
+	postgresRepo := identityinfrastructure.PostgresUserRepo{DB: db}
+
+
+	// TODO!: Implement FindByID, Save, Update in identity/infrastructure/repo.go 
+	// so that postgresRepo can be passed successfully to NewService.
+	identityService := identityapplication.NewService(&postgresRepo)
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 
 	storageRepo := analysisinfrastructure.NewStorageRepository()

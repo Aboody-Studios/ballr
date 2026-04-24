@@ -1,6 +1,8 @@
 package domain
 
-import "context"
+import (
+	"context"
+)
 
 // UserRepository defines the contract for user persistence operations.
 // This interface is implemented in the infrastructure layer to maintain
@@ -9,7 +11,6 @@ type UserRepository interface {
 	// Save persists a new user to the database.
 	Save(ctx context.Context, user *User) error
 
-	// FindByEmail retrieves a user by their email address.
 	FindByEmail(ctx context.Context, email string) (*User, error)
 
 	// FindByID retrieves a user by their UUID.

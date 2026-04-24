@@ -15,14 +15,15 @@ type IdentityHandler struct {
 	authService *application.Service
 }
 
-// NewIdentityHandler creates a new identity handler with the required service.
 func NewIdentityHandler(authService *application.Service) *IdentityHandler {
 	return &IdentityHandler{authService: authService}
 }
 
 func (h *IdentityHandler) SignUpHandler(context *echo.Context) error {
-
+	httpReq := context.Request()
+	ctx := httpReq.Context()
 	var req application.SignupRequest
+
 	if err := context.Bind(&req); err != nil {
 		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
@@ -31,8 +32,11 @@ func (h *IdentityHandler) SignUpHandler(context *echo.Context) error {
 		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid data"})
 	}
 
-	user, registerErr := h.authService.RegisterUser(&req)
+	user, registerErr := h.authService.RegisterUser(&req, ctx)
 	if registerErr != nil {
+		if errors.Is(registerErr, application.ErrEmailAlreadyExists) {
+			return context.JSON(http.StatusConflict, map[string]string{"error": "Email already exists"})
+		}
 		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 

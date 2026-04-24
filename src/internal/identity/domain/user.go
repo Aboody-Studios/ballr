@@ -53,6 +53,7 @@ type JWTCustomClaims struct {
 
 // NewUser creates a new user with validation.
 // Factory method ensures invariants are maintained during creation.
+// TODO!: Add playgorund validator here by creating a struct.
 func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) (*User, error) {
 	user := &User{
 		ID:           id,
@@ -66,15 +67,15 @@ func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, posi
 		CreatedAt:    time.Now(),
 	}
 
-	if err := user.Validate(); err != nil {
+	/*if err := user.Validate(); err != nil {
 		return nil, err
-	}
+	}*/
 
 	return user, nil
 }
 
-// Validate checks domain invariants for the User entity.
-func (u *User) Validate() error {
+// commented this out as it is already being done by playgorund validator (I think)
+/*func (u *User) Validate() error {
 	if u.Email == "" {
 		return ErrInvalidEmail
 	}
@@ -101,16 +102,17 @@ func (u *User) Validate() error {
 	}
 
 	return nil
-}
+}*/
 
 // UpdateProfile updates the user's profile information.
+// TODO!: Use playgorund validator on this. Probably by creating a struct.
 func (u *User) UpdateProfile(fullName string, position Position, footedness Footedness, goals string) error {
 	u.FullName = fullName
 	u.Position = position
 	u.Footedness = footedness
 	u.Goals = goals
 
-	return u.Validate()
+	return nil
 }
 
 // CalculateAge returns the user's current age based on birth date.

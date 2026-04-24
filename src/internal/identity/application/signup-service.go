@@ -1,18 +1,29 @@
 package application
 
 import (
+	"context"
+	"errors"
+
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	"gorm.io/gorm"
 )
 
-// This struct is here because adding it to identity/http causes an import cycle.
+var ErrEmailAlreadyExists = errors.New("Email already exists")
 
-func (s *Service) RegisterUser(user *SignupRequest) (*domain.User, error) {
+func (s *Service) RegisterUser(user *SignupRequest, ctx context.Context) (*domain.User, error) {
 	hashedPass, err := hashPass(user.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	//TODO!: Use FindByEmail here to check for email duplicates before registration before creating the user.
+	userfound, findErr := s.userRepo.FindByEmail(ctx, user.Email)
+	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+		return nil, findErr
+	}
+
+	if userfound != nil {
+		return nil, ErrEmailAlreadyExists
+	}
 
 	domainUser, newUserError := domain.NewUser("123", user.Email, hashedPass, user.FullName, user.BirthDate, user.Position, user.Footedness, user.Goals)
 
