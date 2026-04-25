@@ -8,20 +8,20 @@ import (
 // Conversation represents an AI coaching session with message history.
 // This is the aggregate root for the Coach bounded context.
 type Conversation struct {
-	ID        string
-	UserID    string
-	SessionID string
-	Messages  []Message
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Context   Context
+	ID        string    `gorm:"primaryKey"`
+	UserID    string    `gorm:"index;not null"`
+	SessionID string    `gorm:"uniqueIndex:idx_user_session;not null"`
+	Messages  []Message `gorm:"type:jsonb;serializer:json"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	Context   Context   `gorm:"type:jsonb;serializer:json"`
 }
 
 type Message struct {
-	ID        string
-	Role      Role
-	Content   string
-	Timestamp time.Time
+	ID        string    `json:"id"`
+	Role      Role      `json:"role"`
+	Content   string    `json:"content"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type Role string
@@ -64,15 +64,15 @@ type TrainingHistoryContext struct {
 }
 
 type TrainingPlan struct {
-	ID          string
-	UserID      string
-	CreatedAt   time.Time
+	ID          string         `gorm:"primaryKey"`
+	UserID      string         `gorm:"index;not null"`
+	CreatedAt   time.Time      `gorm:"autoCreateTime"`
 	ExpiresAt   time.Time
-	Objective   string
-	FocusAreas  []string
-	Drills      []PlanDrill
-	Schedule    WeeklySchedule
-	AIReasoning string
+	Objective   string         `gorm:"type:text"`
+	FocusAreas  []string       `gorm:"type:jsonb;serializer:json"`
+	Drills      []PlanDrill    `gorm:"type:jsonb;serializer:json"`
+	Schedule    WeeklySchedule `gorm:"type:jsonb;serializer:json"`
+	AIReasoning string         `gorm:"type:text"`
 }
 
 type PlanDrill struct {
@@ -103,16 +103,16 @@ type Activity struct {
 }
 
 type DietPlan struct {
-	ID          string
-	UserID      string
-	CreatedAt   time.Time
+	ID          string      `gorm:"primaryKey"`
+	UserID      string      `gorm:"index;not null"`
+	CreatedAt   time.Time   `gorm:"autoCreateTime"`
 	ExpiresAt   time.Time
 	Calories    int
-	Macros      Macros
-	Meals       []Meal
-	Hydration   string
-	Supplements []string
-	AIReasoning string
+	Macros      Macros      `gorm:"type:jsonb;serializer:json"`
+	Meals       []Meal      `gorm:"type:jsonb;serializer:json"`
+	Hydration   string      `gorm:"type:text"`
+	Supplements []string    `gorm:"type:jsonb;serializer:json"`
+	AIReasoning string      `gorm:"type:text"`
 }
 
 type Macros struct {
