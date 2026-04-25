@@ -8,11 +8,11 @@ import (
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/analysis/infrastructure"
 	analysishttp "github.com/Aboody-Studios/ballr/src/internal/analysis/interfaces/http"
 	identityapplication "github.com/Aboody-Studios/ballr/src/internal/identity/application"
+	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/interfaces/http"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	sharedhttp "github.com/Aboody-Studios/ballr/src/internal/shared/interfaces/http"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
-	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -30,11 +30,11 @@ func main() {
 	}
 
 	postgresRepo := identityinfrastructure.PostgresUserRepo{DB: db}
+	oauthProvider := identityinfrastructure.GoogleOAuthAPI{}
 
-
-	// TODO!: Implement FindByID, Save, Update in identity/infrastructure/repo.go 
+	// TODO!: Implement FindByID, Save, Update in identity/infrastructure/repo.go
 	// so that postgresRepo can be passed successfully to NewService.
-	identityService := identityapplication.NewService(&postgresRepo)
+	identityService := identityapplication.NewService(&postgresRepo, &oauthProvider)
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 
 	storageRepo := analysisinfrastructure.NewStorageRepository()

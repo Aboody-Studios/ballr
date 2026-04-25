@@ -16,7 +16,7 @@ func (s *Service) RegisterUser(user *SignupRequest, ctx context.Context) (*domai
 		return nil, err
 	}
 
-	userfound, findErr := s.userRepo.FindByEmail(ctx, user.Email)
+	userfound, findErr := s.UserRepo.FindByEmail(ctx, user.Email)
 	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
 		return nil, findErr
 	}
