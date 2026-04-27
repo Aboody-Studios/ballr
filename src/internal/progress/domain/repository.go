@@ -57,11 +57,11 @@ type EventLogRepository interface {
 
 // EventLog represents a single gamification event for analytics.
 type EventLog struct {
-	UserID        string
-	Type          string
+	UserID        string                 `gorm:"index:idx_user_event;not null"`
+	Type          string                 `gorm:"index:idx_user_event;not null"`
 	PointsAwarded int64
-	Timestamp     time.Time
-	Metadata      map[string]interface{}
+	Timestamp     time.Time              `gorm:"index"`
+	Metadata      map[string]interface{} `gorm:"type:jsonb;serializer:json"`
 }
 
 // LeaderboardRepository defines the contract for leaderboard operations.

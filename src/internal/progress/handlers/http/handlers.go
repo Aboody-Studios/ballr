@@ -2,49 +2,73 @@ package http
 
 import (
 	"net/http"
+	"strconv"
 
+	"github.com/Aboody-Studios/ballr/src/internal/progress/application"
+	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
 
-// ProgressHandler handles HTTP requests for the Progress bounded context.
 type ProgressHandler struct {
-	// progressService will be wired when the application service is implemented
-	// progressService *application.Service
+	progressService *application.GamificationService
 }
 
-// NewProgressHandler creates a new progress handler.
-// TODO!: Wire up application service when implementing gamification logic.
-func NewProgressHandler() *ProgressHandler {
-	return &ProgressHandler{}
+func NewProgressHandler(service *application.GamificationService) *ProgressHandler {
+	return &ProgressHandler{progressService: service}
 }
 
-// GetProgressSummaryHandler returns the user's total points, current streak, and recent activity.
 func (h *ProgressHandler) GetProgressSummaryHandler(c *echo.Context) error {
-	// TODO!: Implement when progress application service is available
+	claims, err := delivery.ExtractToken(c)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"total_points":   0,
-		"current_streak": 0,
-		"last_active":    nil,
-		"achievements":   []string{},
-	})
+	summary, err := h.progressService.GetProgressSummary(c.Request().Context(), claims.ID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Progress not found"})
+	}
+
+	return c.JSON(http.StatusOK, summary)
 }
 
-// ListAchievementsHandler returns all achievements for the user with unlock status.
 func (h *ProgressHandler) ListAchievementsHandler(c *echo.Context) error {
-	// TODO!: Implement achievement listing
+	claims, err := delivery.ExtractToken(c)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	achievements, err := h.progressService.GetAchievements(c.Request().Context(), claims.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load achievements"})
+	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"achievements": []string{},
+		"achievements": achievements,
 	})
 }
 
-// GetLeaderboardHandler returns the global or friends-only leaderboard.
 func (h *ProgressHandler) GetLeaderboardHandler(c *echo.Context) error {
-	// TODO!: Implement leaderboard
+	offsetStr := c.QueryParam("offset")
+	limitStr := c.QueryParam("limit")
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 25
+	}
+
+	leaderboard, err := h.progressService.GetLeaderboard(c.Request().Context(), offset, limit)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load leaderboard"})
+	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"leaderboard": []string{},
-		"user_rank":   0,
+		"leaderboard": leaderboard,
+		"offset":      offset,
+		"limit":       limit,
 	})
 }
