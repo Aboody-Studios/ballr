@@ -1,17 +1,21 @@
 package http
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"net/http"
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	"github.com/labstack/echo/v5"
-	"golang.org/x/oauth2"
 )
 
 // Activated when user clicks "sign in with google"
 func (h *IdentityHandler) SignInWithGoogleHandler(echoCtx *echo.Context) error {
-	state := oauth2.GenerateVerifier()
+	state, stateErr := generateState()
+	if stateErr != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error":"state generation error"})
+	}
 	url := infrastructure.GoogleOauthConfig.AuthCodeURL(state)
 
 	echoCtx.SetCookie(&http.Cookie{
@@ -19,7 +23,7 @@ func (h *IdentityHandler) SignInWithGoogleHandler(echoCtx *echo.Context) error {
 		Value:    state,
 		Expires:  time.Now().Add(15 * time.Minute),
 		HttpOnly: true,
-		Secure:   false, //must set to true in production
+		Secure:   false, //TODO!: Set to true in production
 	})
 
 	if err := echoCtx.Redirect(http.StatusSeeOther, url); err != nil {
@@ -52,4 +56,16 @@ func (h *IdentityHandler) GoogleCallbackHandler(echoCtx *echo.Context) error {
 		return googleFetchErr
 	}
 	return echoCtx.JSON(http.StatusOK, map[string]string{"token": JWTToken})
+}
+
+
+func generateState() (string, error) {
+	stateByteSlice := make([]byte, 16)
+	_, err := rand.Read(stateByteSlice)
+	if err != nil {
+		return "", err
+	}
+	state := base64.URLEncoding.EncodeToString(stateByteSlice)
+
+	return state, nil
 }
