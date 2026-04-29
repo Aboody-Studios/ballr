@@ -48,26 +48,26 @@ func hashPass(password string) (string, error) {
 	return string(hashedPass), nil
 }
 
-func (s *Service) LoginWithGoogle(ctx context.Context, token *oauth2.Token) (string, error) {
-	socialUser, err := s.OauthProvider.Fetch(ctx, token)
+func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token) (string, error) {
+	googleUser, err := s.OauthProvider.FetchUserInfo(ctx, googleToken)
 	if err != nil {
 		return "", err
 	}
 
-	if !socialUser.VerifiedEmail {
+	if !googleUser.VerifiedEmail {
 		return "", fmt.Errorf("Unverified email: %d", http.StatusUnauthorized)
 	}
 
-	_, findErr := s.UserRepo.FindByEmail(ctx, socialUser.Email)
+	_, findErr := s.UserRepo.FindByEmail(ctx, googleUser.Email)
 
-	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound){
+	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
 		return "", findErr
 	}
 
 	if findErr != nil && errors.Is(findErr, gorm.ErrRecordNotFound) {
 		domainUser := &domain.User{
-			Email:    socialUser.Email,
-			FullName: socialUser.Name,
+			Email:    googleUser.Email,
+			FullName: googleUser.Name,
 		}
 		saveErr := s.UserRepo.Save(ctx, domainUser)
 		if saveErr != nil {
@@ -75,7 +75,7 @@ func (s *Service) LoginWithGoogle(ctx context.Context, token *oauth2.Token) (str
 		}
 	}
 
-	JWTToken, genErr := s.GenerateToken(socialUser.Email)
+	JWTToken, genErr := s.GenerateToken(googleUser.Email)
 
 	if genErr != nil {
 		return "", genErr

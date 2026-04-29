@@ -14,7 +14,7 @@ import (
 func (h *IdentityHandler) SignInWithGoogleHandler(echoCtx *echo.Context) error {
 	state, stateErr := generateState()
 	if stateErr != nil {
-		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error":"state generation error"})
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "state generation error"})
 	}
 	url := infrastructure.GoogleOauthConfig.AuthCodeURL(state)
 
@@ -46,18 +46,17 @@ func (h *IdentityHandler) GoogleCallbackHandler(echoCtx *echo.Context) error {
 
 	codeQueryParam := echoCtx.QueryParam("code")
 	ctx := echoCtx.Request().Context()
-	token, exchangeErr := infrastructure.GoogleOauthConfig.Exchange(ctx, codeQueryParam)
+	googleToken, exchangeErr := infrastructure.GoogleOauthConfig.Exchange(ctx, codeQueryParam)
 	if exchangeErr != nil {
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Google access token exchange error"})
 	}
 
-	JWTToken, googleFetchErr := h.authService.LoginWithGoogle(ctx, token)
+	JWTToken, googleFetchErr := h.authService.LoginWithGoogle(ctx, googleToken)
 	if googleFetchErr != nil {
 		return googleFetchErr
 	}
 	return echoCtx.JSON(http.StatusOK, map[string]string{"token": JWTToken})
 }
-
 
 func generateState() (string, error) {
 	stateByteSlice := make([]byte, 16)

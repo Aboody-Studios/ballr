@@ -5,7 +5,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SocialUserInfo struct {
+type GoogleUserInfo struct {
 	Email         string
 	VerifiedEmail bool
 	Name          string
@@ -13,5 +13,5 @@ type SocialUserInfo struct {
 }
 
 type OAuthProvider interface {
-	Fetch(ctx context.Context, token *oauth2.Token) (*SocialUserInfo, error)
+	FetchUserInfo(ctx context.Context, token *oauth2.Token) (*GoogleUserInfo, error)
 }

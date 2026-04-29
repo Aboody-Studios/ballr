@@ -30,7 +30,7 @@ type GoogleOAuthUserInfoResponse struct {
 
 type GoogleOAuthAPI struct{}
 
-func (g *GoogleOAuthAPI) Fetch(ctx context.Context, token *oauth2.Token) (*domain.SocialUserInfo, error) {
+func (g *GoogleOAuthAPI) FetchUserInfo(ctx context.Context, token *oauth2.Token) (*domain.GoogleUserInfo, error) {
 	client := GoogleOauthConfig.Client(ctx, token)
 	res, getErr := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if getErr != nil {
@@ -51,7 +51,7 @@ func (g *GoogleOAuthAPI) Fetch(ctx context.Context, token *oauth2.Token) (*domai
 		return nil, err
 	}
 
-	return &domain.SocialUserInfo{
+	return &domain.GoogleUserInfo{
 		Email:         gResp.Email,
 		VerifiedEmail: gResp.VerifiedEmail,
 		Name:          gResp.Name,
