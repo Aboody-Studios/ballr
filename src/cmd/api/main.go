@@ -5,11 +5,11 @@ import (
 	"os"
 
 	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/analysis/application"
+	analysishttp "github.com/Aboody-Studios/ballr/src/internal/analysis/handlers/http"
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/analysis/infrastructure"
-	analysishttp "github.com/Aboody-Studios/ballr/src/internal/analysis/interfaces/http"
 	identityapplication "github.com/Aboody-Studios/ballr/src/internal/identity/application"
+	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
-	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/interfaces/http"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	sharedhttp "github.com/Aboody-Studios/ballr/src/internal/shared/interfaces/http"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"

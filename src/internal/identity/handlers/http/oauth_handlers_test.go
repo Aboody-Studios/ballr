@@ -28,7 +28,7 @@ func newInMemoryUserRepo() *inMemoryUserRepo {
 	return &inMemoryUserRepo{users: make(map[string]*domain.User)}
 }
 
-func (r *inMemoryUserRepo) Save(ctx context.Context, user *domain.User) error {
+func (r *inMemoryUserRepo) Create(ctx context.Context, user *domain.User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.users[user.Email] = user

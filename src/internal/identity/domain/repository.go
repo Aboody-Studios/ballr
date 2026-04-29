@@ -8,15 +8,15 @@ import (
 // This interface is implemented in the infrastructure layer to maintain
 // dependency inversion - the domain knows what it needs, not how it's stored.
 type UserRepository interface {
-	// Save persists a new user to the database.
-	Save(ctx context.Context, user *User) error
+	// Create persists new user data the database.
+	Create(ctx context.Context, user *User) error
 
 	FindByEmail(ctx context.Context, email string) (*User, error)
 
 	// FindByID retrieves a user by their UUID.
 	FindByID(ctx context.Context, id string) (*User, error)
 
-	// Update modifies an existing user's data.
+	//Update existing user data in the database
 	Update(ctx context.Context, user *User) error
 }
 

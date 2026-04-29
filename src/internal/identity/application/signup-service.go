@@ -10,7 +10,7 @@ import (
 
 var ErrEmailAlreadyExists = errors.New("Email already exists")
 
-func (s *Service) RegisterUser(user *SignupRequest, ctx context.Context) (*domain.User, error) {
+func (s *Service) RegisterUser(user *UserDTO, ctx context.Context) (*domain.User, error) {
 	hashedPass, err := hashPass(user.Password)
 	if err != nil {
 		return nil, err

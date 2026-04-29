@@ -1,7 +1,7 @@
 package http
 
 import (
-	"github.com/Aboody-Studios/ballr/src/internal/identity/interfaces/http"
+	"github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	"github.com/labstack/echo/v5"
 	echomw "github.com/labstack/echo/v5/middleware"

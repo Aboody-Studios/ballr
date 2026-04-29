@@ -54,9 +54,8 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 			Email:    googleUser.Email,
 			FullName: googleUser.Name,
 		}
-		saveErr := s.UserRepo.Save(ctx, domainUser)
-		if saveErr != nil {
-			return "", saveErr
+		if err := s.UserRepo.Create(ctx, domainUser); err != nil {
+			return "", err
 		}
 	}
 
@@ -69,7 +68,6 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 	return JWTToken, nil
 }
 
-
 // This function is here because it will be used in both concrete signup and login
 func (s *Service) GenerateToken(email string) (string, error) {
 	secretKey := os.Getenv("JWT_SECRET")
@@ -77,10 +75,25 @@ func (s *Service) GenerateToken(email string) (string, error) {
 	customClaims.Email = email
 	customClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Hour * 24))
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, customClaims)
+
 	signedToken, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", err
 	}
 
 	return signedToken, nil
+}
+
+func (s *Service) FetchMutateSave(updateReq *UpdateUserRequest, ctx context.Context, id string) error {
+	user, err := s.UserRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	user.UpdateProfile(updateReq.FullName, updateReq.Position, updateReq.Footedness, updateReq.Goals)
+	if err := s.UserRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	return nil
 }

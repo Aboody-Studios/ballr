@@ -53,7 +53,7 @@ type JWTCustomClaims struct {
 
 // NewUser creates a new user with validation.
 // Factory method ensures invariants are maintained during creation.
-// This doesn't need validation as it will be called after using SignUpRequest (for example), which itself has validation. 
+// This doesn't need validation as it will be called after using SignUpRequest (for example), which itself has validation.
 func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) (*User, error) {
 	user := &User{
 		ID:           id,
@@ -106,13 +106,11 @@ func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, posi
 
 // UpdateProfile updates the user's profile information.
 // TODO!: Use playgorund validator on this. Probably by creating a struct.
-func (u *User) UpdateProfile(fullName string, position Position, footedness Footedness, goals string) error {
+func (u *User) UpdateProfile(fullName string, position Position, footedness Footedness, goals string) {
 	u.FullName = fullName
 	u.Position = position
 	u.Footedness = footedness
 	u.Goals = goals
-
-	return nil
 }
 
 // CalculateAge returns the user's current age based on birth date.
