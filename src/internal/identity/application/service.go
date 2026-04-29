@@ -25,21 +25,6 @@ func NewService(repo domain.UserRepository, oauthProv domain.OAuthProvider) *Ser
 }
 
 // This function is here because it will be used in both concrete signup and login
-func (s *Service) GenerateToken(email string) (string, error) {
-	secretKey := os.Getenv("JWT_SECRET")
-	var customClaims domain.JWTCustomClaims
-	customClaims.Email = email
-	customClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Hour * 24))
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, customClaims)
-	signedToken, err := token.SignedString([]byte(secretKey))
-	if err != nil {
-		return "", err
-	}
-
-	return signedToken, nil
-}
-
-// This function is here because it will be used in both concrete signup and login
 func hashPass(password string) (string, error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -82,4 +67,20 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 	}
 
 	return JWTToken, nil
+}
+
+
+// This function is here because it will be used in both concrete signup and login
+func (s *Service) GenerateToken(email string) (string, error) {
+	secretKey := os.Getenv("JWT_SECRET")
+	var customClaims domain.JWTCustomClaims
+	customClaims.Email = email
+	customClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Hour * 24))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, customClaims)
+	signedToken, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
 }

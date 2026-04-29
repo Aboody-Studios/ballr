@@ -53,7 +53,7 @@ type JWTCustomClaims struct {
 
 // NewUser creates a new user with validation.
 // Factory method ensures invariants are maintained during creation.
-// TODO!: Add playgorund validator here by creating a struct.
+// This doesn't need validation as it will be called after using SignUpRequest (for example), which itself has validation. 
 func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) (*User, error) {
 	user := &User{
 		ID:           id,
