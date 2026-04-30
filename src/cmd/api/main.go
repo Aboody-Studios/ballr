@@ -32,8 +32,6 @@ func main() {
 	postgresRepo := identityinfrastructure.PostgresUserRepo{DB: db}
 	oauthProvider := identityinfrastructure.GoogleOAuthAPI{}
 
-	
-	
 	identityService := identityapplication.NewService(&postgresRepo, &oauthProvider)
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 

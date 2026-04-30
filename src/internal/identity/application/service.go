@@ -10,6 +10,7 @@ import (
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -43,24 +44,25 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 		return "", fmt.Errorf("Unverified email: %d", http.StatusUnauthorized)
 	}
 
-	_, findErr := s.UserRepo.FindByEmail(ctx, googleUser.Email)
+	dbUser, findErr := s.UserRepo.FindByEmail(ctx, googleUser.Email)
+	if findErr != nil {
+		if !errors.Is(findErr, gorm.ErrRecordNotFound) {
+			return "", findErr
+		}
 
-	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
-		return "", findErr
-	}
-
-	if findErr != nil && errors.Is(findErr, gorm.ErrRecordNotFound) {
 		domainUser := &domain.User{
+			ID:       uuid.NewString(),
 			Email:    googleUser.Email,
 			FullName: googleUser.Name,
 		}
 		if err := s.UserRepo.Create(ctx, domainUser); err != nil {
 			return "", err
 		}
+
+		dbUser = domainUser
 	}
 
-	JWTToken, genErr := s.GenerateToken(googleUser.Email)
-
+	JWTToken, genErr := s.GenerateToken(googleUser.Email, dbUser.ID)
 	if genErr != nil {
 		return "", genErr
 	}
@@ -69,10 +71,12 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 }
 
 // This function is here because it will be used in both concrete signup and login
-func (s *Service) GenerateToken(email string) (string, error) {
+func (s *Service) GenerateToken(id, email string) (string, error) {
+	//TODO!: Rotate JWT secret
 	secretKey := os.Getenv("JWT_SECRET")
 	var customClaims domain.JWTCustomClaims
 	customClaims.Email = email
+	customClaims.ID = id
 	customClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Hour * 24))
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, customClaims)
 

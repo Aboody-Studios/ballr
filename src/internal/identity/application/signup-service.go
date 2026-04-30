@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -25,13 +26,12 @@ func (s *Service) RegisterUser(user *UserDTO, ctx context.Context) (*domain.User
 		return nil, ErrEmailAlreadyExists
 	}
 
-	domainUser, newUserError := domain.NewUser("123", user.Email, hashedPass, user.FullName, user.BirthDate, user.Position, user.Footedness, user.Goals)
+	domainUser := domain.NewUser(uuid.NewString(), user.Email, hashedPass, user.FullName, user.BirthDate, user.Position, user.Footedness, user.Goals)
 
-	if newUserError != nil {
-		return nil, newUserError
-	}
-
-	// TODO!: Persist user via repository when database is configured.
+	/* TODO!: Persist user via repository when database is configured.
+	if err := s.UserRepo.Create(ctx, domainUser); err != nil {
+		return nil, err
+	}*/
 
 	return domainUser, nil
 }

@@ -40,7 +40,7 @@ func (h *IdentityHandler) SignUpHandler(context *echo.Context) error {
 		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
-	token, err := h.authService.GenerateToken(user.Email)
+	token, err := h.authService.GenerateToken(user.Email, user.ID)
 	if err != nil {
 		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}

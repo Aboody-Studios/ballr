@@ -33,9 +33,10 @@ const (
 
 // User is the aggregate root for the Identity bounded context.
 // As an aggregate root, it maintains its own invariants and consistency boundaries.
+// TODO!: Remove `gorm:"uniqueIndex"` from here as it violates clean architecture. (Used temporarily)
 type User struct {
 	ID           string
-	Email        string
+	Email        string `gorm:"uniqueIndex"`
 	PasswordHash string
 	FullName     string
 	BirthDate    time.Time
@@ -54,7 +55,7 @@ type JWTCustomClaims struct {
 // NewUser creates a new user with validation.
 // Factory method ensures invariants are maintained during creation.
 // This doesn't need validation as it will be called after using SignUpRequest (for example), which itself has validation.
-func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) (*User, error) {
+func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) *User {
 	user := &User{
 		ID:           id,
 		Email:        email,
@@ -71,7 +72,7 @@ func NewUser(id, email, passwordHash, fullName string, birthDate time.Time, posi
 		return nil, err
 	}*/
 
-	return user, nil
+	return user
 }
 
 // commented this out as it is already being done by playgorund validator (I think)
