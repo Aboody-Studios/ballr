@@ -70,18 +70,22 @@ func (h *IdentityHandler) UpdateDataHandler(echoCtx *echo.Context) error {
 }
 
 // ExtractToken extracts and returns the full JWT claims from the context.
-func ExtractTokenForFrontend(echoCtx *echo.Context) error {
+// Unused for now.
+/*func ExtractTokenForFrontend(echoCtx *echo.Context) error {
 	claims, err := ExtractToken(echoCtx)
 	if err != nil {
 		return err
 	}
 	return echoCtx.JSON(http.StatusOK, claims)
-}
+}*/
 
 func ExtractToken(echoCtx *echo.Context) (*domain.JWTCustomClaims, error) {
 	token, err := echo.ContextGet[*jwt.Token](echoCtx, "user")
 	if err != nil {
 		return nil, echo.ErrUnauthorized.Wrap(err)
+	}
+	if !token.Valid {
+		return nil, echo.ErrUnauthorized
 	}
 	claims, ok := token.Claims.(*domain.JWTCustomClaims)
 	if !ok {
@@ -94,13 +98,9 @@ func ExtractToken(echoCtx *echo.Context) (*domain.JWTCustomClaims, error) {
 // ExtractEmailFromJWT extracts the email claim from the JWT token in the context.
 // Used in rate limiter.
 func ExtractEmailFromJWT(echoCtx *echo.Context) (string, error) {
-	token, err := echo.ContextGet[*jwt.Token](echoCtx, "user")
+	claims, err := ExtractToken(echoCtx)
 	if err != nil {
-		return "", echo.ErrUnauthorized.Wrap(err)
-	}
-	claims, ok := token.Claims.(*domain.JWTCustomClaims)
-	if !ok {
-		return "", errors.New("failed to cast claims as JWTCustomClaims")
+		return "", err
 	}
 	return claims.Email, nil
 }

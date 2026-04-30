@@ -32,8 +32,8 @@ func main() {
 	postgresRepo := identityinfrastructure.PostgresUserRepo{DB: db}
 	oauthProvider := identityinfrastructure.GoogleOAuthAPI{}
 
-	// TODO!: Implement FindByID, Save, Update in identity/infrastructure/repo.go
-	// so that postgresRepo can be passed successfully to NewService.
+	
+	
 	identityService := identityapplication.NewService(&postgresRepo, &oauthProvider)
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 
