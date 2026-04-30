@@ -5,8 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/application"
-	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
 
@@ -57,7 +56,7 @@ func (h *IdentityHandler) UpdateDataHandler(echoCtx *echo.Context) error {
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
 
-	claims, err := ExtractToken(echoCtx)
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
 		return err
 	}
@@ -79,26 +78,10 @@ func (h *IdentityHandler) UpdateDataHandler(echoCtx *echo.Context) error {
 	return echoCtx.JSON(http.StatusOK, claims)
 }*/
 
-func ExtractToken(echoCtx *echo.Context) (*domain.JWTCustomClaims, error) {
-	token, err := echo.ContextGet[*jwt.Token](echoCtx, "user")
-	if err != nil {
-		return nil, echo.ErrUnauthorized.Wrap(err)
-	}
-	if !token.Valid {
-		return nil, echo.ErrUnauthorized
-	}
-	claims, ok := token.Claims.(*domain.JWTCustomClaims)
-	if !ok {
-		return nil, errors.New("failed to cast claims as JWTCustomClaims")
-	}
-
-	return claims, nil
-}
-
 // ExtractEmailFromJWT extracts the email claim from the JWT token in the context.
 // Used in rate limiter.
 func ExtractEmailFromJWT(echoCtx *echo.Context) (string, error) {
-	claims, err := ExtractToken(echoCtx)
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
 		return "", err
 	}

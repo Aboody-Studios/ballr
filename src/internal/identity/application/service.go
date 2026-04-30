@@ -72,7 +72,7 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 
 // This function is here because it will be used in both concrete signup and login
 func (s *Service) GenerateToken(id, email string) (string, error) {
-	//TODO!: Rotate JWT secret
+	//TODO!: Rotate secret key
 	secretKey := os.Getenv("JWT_SECRET")
 	var customClaims domain.JWTCustomClaims
 	customClaims.Email = email

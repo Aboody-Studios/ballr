@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Aboody-Studios/ballr/src/internal/coach/application"
+	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
 
@@ -21,29 +22,28 @@ func NewCoachHandler(service *application.Service) *CoachHandler {
 
 // ChatHandler handles conversational interactions with the AI Coach.
 // Endpoint: POST /coach/chat
-func (h *CoachHandler) ChatHandler(c *echo.Context) error {
+func (h *CoachHandler) ChatHandler(echoCtx *echo.Context) error {
 	var req struct {
 		Message   string `json:"message" validate:"required"`
 		SessionID string `json:"session_id,omitempty"`
 	}
 
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
+	if err := echoCtx.Bind(&req); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed"})
+	if err := echoCtx.Validate(&req); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed"})
 	}
 
-	// TODO!: Extract from JWT claims once auth middleware is fully implemented
-	userID := "stub-user-id"
+	claims, err := delivery.ExtractToken(echoCtx)
 
-	response, err := h.coachService.Chat(c.Request().Context(), userID, req.Message, req.SessionID)
+	response, err := h.coachService.Chat(echoCtx.Request().Context(), claims.ID, req.Message, req.SessionID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "AI service unavailable"})
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "AI service unavailable"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return echoCtx.JSON(http.StatusOK, map[string]interface{}{
 		"response":   response.Content,
 		"session_id": req.SessionID,
 		"role":       response.Role,
@@ -52,38 +52,43 @@ func (h *CoachHandler) ChatHandler(c *echo.Context) error {
 
 // GeneratePlanHandler creates personalized training plans based on user goals and recent performance.
 // Endpoint: POST /coach/plan/generate
-func (h *CoachHandler) GeneratePlanHandler(c *echo.Context) error {
+func (h *CoachHandler) GeneratePlanHandler(echoCtx *echo.Context) error {
 	var req struct {
 		FocusAreas []string `json:"focus_areas,omitempty"`
 	}
 
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
+	if err := echoCtx.Bind(&req); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
 
-	// TODO!: Extract from JWT claims once auth middleware is fully implemented
-	userID := "stub-user-id"
-
-	plan, err := h.coachService.GenerateTrainingPlan(c.Request().Context(), userID, req.FocusAreas)
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate plan"})
+		return err
 	}
 
-	return c.JSON(http.StatusCreated, plan)
+	plan, err := h.coachService.GenerateTrainingPlan(echoCtx.Request().Context(), claims.ID, req.FocusAreas)
+	if err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate plan"})
+	}
+
+	return echoCtx.JSON(http.StatusCreated, plan)
 }
 
 // GenerateDietHandler creates nutrition recommendations based on user profile and training load.
 // Endpoint: POST /coach/diet/generate
-func (h *CoachHandler) GenerateDietHandler(c *echo.Context) error {
-	// TODO!: Extract from JWT claims once auth middleware is fully implemented
-	userID := "stub-user-id"
+func (h *CoachHandler) GenerateDietHandler(echoCtx *echo.Context) error {
 
-	dietPlan, err := h.coachService.GenerateDietPlan(c.Request().Context(), userID)
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate diet plan"})
+		return err
 	}
 
-	return c.JSON(http.StatusCreated, dietPlan)
+	dietPlan, err := h.coachService.GenerateDietPlan(echoCtx.Request().Context(), claims.ID)
+	if err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate diet plan"})
+	}
+
+	return echoCtx.JSON(http.StatusCreated, dietPlan)
 }
 
 // GetHistoryHandler retrieves the conversation history for the authenticated user.
