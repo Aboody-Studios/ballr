@@ -9,7 +9,6 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// IdentityHandler handles HTTP requests for the Identity bounded context.
 type IdentityHandler struct {
 	authService *application.Service
 }
@@ -18,68 +17,67 @@ func NewIdentityHandler(authService *application.Service) *IdentityHandler {
 	return &IdentityHandler{authService: authService}
 }
 
-func (h *IdentityHandler) SignUpHandler(context *echo.Context) error {
-	httpReq := context.Request()
-	ctx := httpReq.Context()
-	var req application.UserDTO
-
-	if err := context.Bind(&req); err != nil {
-		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
-	}
-
-	if err := context.Validate(&req); err != nil {
-		return context.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid data"})
-	}
-
-	user, registerErr := h.authService.RegisterUser(&req, ctx)
-	if registerErr != nil {
-		if errors.Is(registerErr, application.ErrEmailAlreadyExists) {
-			return context.JSON(http.StatusConflict, map[string]string{"error": "Email already exists"})
-		}
-		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-	}
-
-	token, err := h.authService.GenerateToken(user.Email, user.ID)
+func (h *IdentityHandler) GetProfileHandler(echoCtx *echo.Context) error {
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
-	return context.JSON(http.StatusCreated, map[string]string{"token": token})
+	profile, err := h.authService.GetProfile(echoCtx.Request().Context(), claims.ID)
+	if err != nil {
+		return echoCtx.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+	}
+
+	return echoCtx.JSON(http.StatusOK, profile)
 }
 
-func (h *IdentityHandler) UpdateDataHandler(echoCtx *echo.Context) error {
-	httpReq := echoCtx.Request()
-	ctx := httpReq.Context()
-	var updateReq application.UpdateUserRequest
+func (h *IdentityHandler) CompleteProfileHandler(echoCtx *echo.Context) error {
+	claims, err := delivery.ExtractToken(echoCtx)
+	if err != nil {
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
 
-	if err := echoCtx.Bind(&updateReq); err != nil {
+	var req application.OnboardingRequest
+	if err := echoCtx.Bind(&req); err != nil {
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
 
-	claims, err := delivery.ExtractToken(echoCtx)
-	if err != nil {
-		return err
+	if err := echoCtx.Validate(&req); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid data"})
 	}
 
-	if err := h.authService.FetchMutateSave(&updateReq, ctx, claims.ID); err != nil {
-		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	if err := h.authService.CompleteProfile(echoCtx.Request().Context(), claims.ID, &req); err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update profile"})
 	}
 
-	return nil
+	return echoCtx.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// ExtractToken extracts and returns the full JWT claims from the context.
-// Unused for now.
-/*func ExtractTokenForFrontend(echoCtx *echo.Context) error {
-	claims, err := ExtractToken(echoCtx)
-	if err != nil {
-		return err
+func (h *IdentityHandler) RefreshTokenHandler(echoCtx *echo.Context) error {
+	var req application.RefreshRequest
+	if err := echoCtx.Bind(&req); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}
-	return echoCtx.JSON(http.StatusOK, claims)
-}*/
 
-// ExtractEmailFromJWT extracts the email claim from the JWT token in the context.
-// Used in rate limiter.
+	if err := echoCtx.Validate(&req); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid refresh token"})
+	}
+
+	tokenPair, err := h.authService.RefreshAccessToken(echoCtx.Request().Context(), req.RefreshToken)
+	if err != nil {
+		if errors.Is(err, application.ErrRefreshExpired) {
+			return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Refresh token expired"})
+		}
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Token refresh failed"})
+	}
+
+	return echoCtx.JSON(http.StatusOK, application.TokenResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		ExpiresIn:    tokenPair.ExpiresIn,
+	})
+}
+
 func ExtractEmailFromJWT(echoCtx *echo.Context) (string, error) {
 	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {

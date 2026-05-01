@@ -37,8 +37,11 @@ func (h *CoachHandler) ChatHandler(echoCtx *echo.Context) error {
 	}
 
 	claims, err := delivery.ExtractToken(echoCtx)
+	if err != nil {
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
 
-	response, err := h.coachService.Chat(echoCtx.Request().Context(), claims.ID, req.Message, req.SessionID)
+	response, err := h.coachService.Chat(echoCtx.Request().Context(), claims.ID, req.SessionID, req.Message)
 	if err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "AI service unavailable"})
 	}
@@ -63,7 +66,7 @@ func (h *CoachHandler) GeneratePlanHandler(echoCtx *echo.Context) error {
 
 	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return err
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
 	plan, err := h.coachService.GenerateTrainingPlan(echoCtx.Request().Context(), claims.ID, req.FocusAreas)
@@ -80,7 +83,7 @@ func (h *CoachHandler) GenerateDietHandler(echoCtx *echo.Context) error {
 
 	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return err
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
 	dietPlan, err := h.coachService.GenerateDietPlan(echoCtx.Request().Context(), claims.ID)

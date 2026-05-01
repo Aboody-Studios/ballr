@@ -2,12 +2,16 @@ package http
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/application"
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
@@ -17,8 +21,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// inMemoryUserRepo is a tiny in-memory implementation of domain.UserRepository
-// so tests can run without a database.
 type inMemoryUserRepo struct {
 	mu    sync.Mutex
 	users map[string]*domain.User
@@ -46,6 +48,13 @@ func (r *inMemoryUserRepo) FindByEmail(ctx context.Context, email string) (*doma
 }
 
 func (r *inMemoryUserRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, u := range r.users {
+		if u.ID == id {
+			return u, nil
+		}
+	}
 	return nil, gorm.ErrRecordNotFound
 }
 
@@ -56,7 +65,45 @@ func (r *inMemoryUserRepo) Update(ctx context.Context, user *domain.User) error 
 	return nil
 }
 
-// fakeOAuthProvider implements domain.OAuthProvider for tests.
+type inMemoryRefreshTokenStore struct {
+	mu    sync.Mutex
+	store map[string]*domain.RefreshTokenData
+}
+
+func newInMemoryRefreshTokenStore() *inMemoryRefreshTokenStore {
+	return &inMemoryRefreshTokenStore{store: make(map[string]*domain.RefreshTokenData)}
+}
+
+func (s *inMemoryRefreshTokenStore) Store(ctx context.Context, rawToken string, data *domain.RefreshTokenData, ttl time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	h := sha256.Sum256([]byte(rawToken))
+	key := hex.EncodeToString(h[:])
+	s.store[key] = data
+	return nil
+}
+
+func (s *inMemoryRefreshTokenStore) Get(ctx context.Context, rawToken string) (*domain.RefreshTokenData, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	h := sha256.Sum256([]byte(rawToken))
+	key := hex.EncodeToString(h[:])
+	data, ok := s.store[key]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return data, nil
+}
+
+func (s *inMemoryRefreshTokenStore) Delete(ctx context.Context, rawToken string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	h := sha256.Sum256([]byte(rawToken))
+	key := hex.EncodeToString(h[:])
+	delete(s.store, key)
+	return nil
+}
+
 type fakeOAuthProvider struct {
 	resp *domain.GoogleUserInfo
 	err  error
@@ -67,11 +114,9 @@ func (f *fakeOAuthProvider) FetchUserInfo(ctx context.Context, token *oauth2.Tok
 }
 
 func TestSignInWithGoogleHandler(t *testing.T) {
-	// preserve original config
 	orig := infrastructure.GoogleOauthConfig
 	defer func() { infrastructure.GoogleOauthConfig = orig }()
 
-	// set a deterministic auth URL for the test
 	infrastructure.GoogleOauthConfig = &oauth2.Config{
 		ClientID:     "cid",
 		ClientSecret: "csecret",
@@ -102,7 +147,6 @@ func TestSignInWithGoogleHandler(t *testing.T) {
 		t.Fatalf("expected redirect Location header")
 	}
 
-	// ensure oauthstate cookie was set
 	found := false
 	for _, ck := range res.Cookies() {
 		if ck.Name == "oauthstate" && ck.Value != "" {
@@ -116,14 +160,12 @@ func TestSignInWithGoogleHandler(t *testing.T) {
 }
 
 func TestGoogleCallbackHandler_Success(t *testing.T) {
-	// Mock token exchange endpoint
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"access_token":"mockaccesstoken","token_type":"Bearer","expires_in":3600}`))
 	}))
 	defer ts.Close()
 
-	// preserve original config
 	orig := infrastructure.GoogleOauthConfig
 	defer func() { infrastructure.GoogleOauthConfig = orig }()
 
@@ -138,7 +180,6 @@ func TestGoogleCallbackHandler_Success(t *testing.T) {
 		},
 	}
 
-	// JWT secret for token generation
 	os.Setenv("JWT_SECRET", "test-secret")
 	defer os.Unsetenv("JWT_SECRET")
 
@@ -150,7 +191,8 @@ func TestGoogleCallbackHandler_Success(t *testing.T) {
 	}}
 
 	repo := newInMemoryUserRepo()
-	svc := application.NewService(repo, fakeProv)
+	refreshStore := newInMemoryRefreshTokenStore()
+	svc := application.NewService(repo, fakeProv, refreshStore)
 	h := NewIdentityHandler(svc)
 
 	e := echo.New()
@@ -168,11 +210,18 @@ func TestGoogleCallbackHandler_Success(t *testing.T) {
 		t.Fatalf("expected status %d got %d", http.StatusOK, res.StatusCode)
 	}
 
-	var body map[string]string
+	var body map[string]interface{}
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatalf("failed to decode response body: %v", err)
 	}
-	if body["token"] == "" {
-		t.Fatalf("expected token in response body")
+
+	if body["access_token"] == nil || body["access_token"] == "" {
+		t.Fatalf("expected access_token in response body")
+	}
+	if body["refresh_token"] == nil || body["refresh_token"] == "" {
+		t.Fatalf("expected refresh_token in response body")
+	}
+	if body["expires_in"] == nil {
+		t.Fatalf("expected expires_in in response body")
 	}
 }

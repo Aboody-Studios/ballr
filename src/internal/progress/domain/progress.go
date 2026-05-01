@@ -8,22 +8,22 @@ import (
 // Progress is the aggregate root for the Progress bounded context.
 // It represents a user's gamification state including points, streaks, and activity tracking.
 type Progress struct {
-	ID            string
-	UserID        string
-	TotalPoints   int64
-	CurrentStreak int
+	ID            string    `gorm:"primaryKey"`
+	UserID        string    `gorm:"uniqueIndex;not null"`
+	TotalPoints   int64     `gorm:"default:0"`
+	CurrentStreak int       `gorm:"default:0"`
 	LastActive    time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
 }
 
 // Achievement represents a badge or milestone unlocked by a user.
 // Achievements are value objects that are part of the Progress aggregate.
 type Achievement struct {
-	ID          string
-	UserID      string
-	Type        string
-	UnlockedAt  time.Time
+	ID          string    `gorm:"primaryKey"`
+	UserID      string    `gorm:"uniqueIndex:idx_user_achievement;not null"`
+	Type        string    `gorm:"uniqueIndex:idx_user_achievement;not null"`
+	UnlockedAt  time.Time `gorm:"autoCreateTime"`
 	PointsValue int
 }
 
@@ -32,17 +32,16 @@ type Achievement struct {
 type AchievementType string
 
 const (
-	AchievementFirstUpload        AchievementType = "FIRST_UPLOAD"
-	AchievementFirstAnalysis      AchievementType = "FIRST_ANALYSIS"
-	AchievementStreak7            AchievementType = "STREAK_7"
-	AchievementStreak30           AchievementType = "STREAK_30"
-	AchievementTopPerformer       AchievementType = "TOP_PERFORMER"
-	AchievementCoachConsult       AchievementType = "COACH_CONSULT"
 	AchievementTypeFirstUpload    AchievementType = "FIRST_UPLOAD"
+	AchievementTypeFirstAnalysis  AchievementType = "FIRST_ANALYSIS"
 	AchievementTypeStreakWeek     AchievementType = "STREAK_WEEK"
 	AchievementTypeStreakMonth    AchievementType = "STREAK_MONTH"
+	AchievementTypeStreak7        AchievementType = "STREAK_7"
+	AchievementTypeStreak30       AchievementType = "STREAK_30"
 	AchievementTypeAnalysisMaster AchievementType = "ANALYSIS_MASTER"
 	AchievementTypeDrillCompleter AchievementType = "DRILL_COMPLETER"
+	AchievementTypeTopPerformer   AchievementType = "TOP_PERFORMER"
+	AchievementTypeCoachConsult   AchievementType = "COACH_CONSULT"
 )
 
 // EventType categorizes activities that generate points.
@@ -177,9 +176,9 @@ func (p *Progress) NextStreakExpiry() time.Time {
 func (p *Progress) CanUnlockStreakAchievement() (AchievementType, bool) {
 	switch p.CurrentStreak {
 	case 7:
-		return AchievementStreak7, true
+		return AchievementTypeStreak7, true
 	case 30:
-		return AchievementStreak30, true
+		return AchievementTypeStreak30, true
 	default:
 		return "", false
 	}
@@ -237,17 +236,17 @@ func isConsecutiveDay(t1, t2 time.Time) bool {
 // achievementPoints returns the point value for a specific achievement type.
 func achievementPoints(t AchievementType) int {
 	switch t {
-	case AchievementFirstUpload:
+	case AchievementTypeFirstUpload:
 		return 100
-	case AchievementFirstAnalysis:
+	case AchievementTypeFirstAnalysis:
 		return 200
-	case AchievementStreak7:
+	case AchievementTypeStreakWeek:
 		return 150
-	case AchievementStreak30:
+	case AchievementTypeStreakMonth:
 		return 500
-	case AchievementTopPerformer:
+	case AchievementTypeTopPerformer:
 		return 300
-	case AchievementCoachConsult:
+	case AchievementTypeCoachConsult:
 		return 50
 	default:
 		return 0

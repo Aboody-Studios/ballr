@@ -19,15 +19,15 @@ const (
 
 // Match is the aggregate root for the Analysis bounded context.
 type Match struct {
-	ID             string
-	UserID         string
-	VideoURL       string
-	ShirtNumber    int
-	PositionPlayed string
-	Status         MatchStatus
-	UploadedAt     time.Time
-	Metadata       MatchMetadata
-	AnalysisResult *AnalysisResult
+	ID             string          `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	UserID         string          `gorm:"index;not null"`
+	VideoURL       string          `gorm:"type:text"`
+	ShirtNumber    int             `gorm:"not null"`
+	PositionPlayed string          `gorm:"type:varchar(20)"`
+	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
+	UploadedAt     time.Time       `gorm:"autoCreateTime"`
+	Metadata       MatchMetadata   `gorm:"type:jsonb;serializer:json"`
+	AnalysisResult *AnalysisResult `gorm:"type:jsonb;serializer:json"`
 }
 
 // MatchMetadata contains flexible match information.
@@ -41,11 +41,11 @@ type MatchMetadata struct {
 
 // AnalysisResult contains the computer vision analysis output.
 type AnalysisResult struct {
-	MatchID         string          `json:"match_id"`
+	MatchID         string          `json:"match_id" gorm:"index"`
 	GeneratedAt     time.Time       `json:"generated_at"`
-	Summary         AnalysisSummary `json:"summary"`
-	Heatmaps        Heatmaps        `json:"heatmaps"`
-	Events          []MatchEvent    `json:"events"`
+	Summary         AnalysisSummary `json:"summary" gorm:"type:jsonb;serializer:json"`
+	Heatmaps        Heatmaps        `json:"heatmaps" gorm:"type:jsonb;serializer:json"`
+	Events          []MatchEvent    `json:"events" gorm:"type:jsonb;serializer:json"`
 	TrackingDataURL string          `json:"tracking_data_url,omitempty"`
 }
 
