@@ -4,21 +4,27 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-// I feel we will need dragonfly instead of redis here but it's ok ig
 type RedisStore struct {
 	*redis.Client
 }
 
 func InitiateRedis() *redis.Client {
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
+	password := os.Getenv("REDIS_PASSWORD")
+
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password
-		DB:       0,  // use default DB
+		Addr:     addr,
+		Password: password,
+		DB:       0,
 		Protocol: 2,
 	})
 
