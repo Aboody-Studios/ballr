@@ -103,11 +103,11 @@ func (p *OpenAIProvider) GenerateDietPlan(ctx context.Context, userProfile coach
 }
 
 type trainingPlanJSON struct {
-	Objective   string         `json:"objective"`
-	FocusAreas  []string       `json:"focus_areas"`
-	Drills      []drillJSON    `json:"drills"`
-	Schedule    scheduleJSON   `json:"schedule"`
-	AIReasoning string         `json:"ai_reasoning"`
+	Objective   string       `json:"objective"`
+	FocusAreas  []string     `json:"focus_areas"`
+	Drills      []drillJSON  `json:"drills"`
+	Schedule    scheduleJSON `json:"schedule"`
+	AIReasoning string       `json:"ai_reasoning"`
 }
 
 type drillJSON struct {
@@ -136,12 +136,12 @@ type activityJSON struct {
 }
 
 type dietPlanJSON struct {
-	Calories    int          `json:"calories"`
-	Macros      macrosJSON   `json:"macros"`
-	Meals       []mealJSON   `json:"meals"`
-	Hydration   string       `json:"hydration"`
-	Supplements []string     `json:"supplements"`
-	AIReasoning string       `json:"ai_reasoning"`
+	Calories    int        `json:"calories"`
+	Macros      macrosJSON `json:"macros"`
+	Meals       []mealJSON `json:"meals"`
+	Hydration   string     `json:"hydration"`
+	Supplements []string   `json:"supplements"`
+	AIReasoning string     `json:"ai_reasoning"`
 }
 
 type macrosJSON struct {

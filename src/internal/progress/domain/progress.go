@@ -8,10 +8,10 @@ import (
 // Progress is the aggregate root for the Progress bounded context.
 // It represents a user's gamification state including points, streaks, and activity tracking.
 type Progress struct {
-	ID            string    `gorm:"primaryKey"`
-	UserID        string    `gorm:"uniqueIndex;not null"`
-	TotalPoints   int64     `gorm:"default:0"`
-	CurrentStreak int       `gorm:"default:0"`
+	ID            string `gorm:"primaryKey"`
+	UserID        string `gorm:"uniqueIndex;not null"`
+	TotalPoints   int64  `gorm:"default:0"`
+	CurrentStreak int    `gorm:"default:0"`
 	LastActive    time.Time
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time `gorm:"autoUpdateTime"`

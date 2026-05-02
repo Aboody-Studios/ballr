@@ -35,17 +35,15 @@ func NewUploadService(provider StorageProvider) *UploadService {
 //   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
 //
 // a nice Easter egg for  future reference yk
-func (s *UploadService) RequestUploadURL(ctx context.Context, name string, size uint64) (string, error) {
-	if !strings.HasSuffix(name, ".mp4") {
+func (s *UploadService) RequestUploadURL(ctx context.Context, video *domain.Video) (string, error) {
+	if !strings.HasSuffix(video.Name, ".mp4") {
 		return "", fmt.Errorf("%w: file must be .mp4 format", ErrInvalidFileFormat)
 	}
 
 	const maxSize uint64 = 3375000000
-	if size > maxSize {
-		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, size, maxSize)
+	if video.Size > maxSize {
+		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, video.Size, maxSize)
 	}
-
-	video := domain.NewVideo(name, size)
 
 	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, video)
 	if err != nil {
@@ -83,7 +81,7 @@ func NewService(
 
 // GenerateUploadURL handles the upload URL generation use case.
 func (s *Service) GenerateUploadURL(ctx context.Context, video *domain.Video) (string, error) {
-	return s.uploadService.RequestUploadURL(ctx, video.Name, video.Size)
+	return s.uploadService.RequestUploadURL(ctx, video)
 }
 
 // GetAnalysisStatus retrieves the current processing status of a match analysis.

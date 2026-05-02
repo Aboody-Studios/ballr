@@ -64,9 +64,9 @@ type TrainingHistoryContext struct {
 }
 
 type TrainingPlan struct {
-	ID          string         `gorm:"primaryKey"`
-	UserID      string         `gorm:"index;not null"`
-	CreatedAt   time.Time      `gorm:"autoCreateTime"`
+	ID          string    `gorm:"primaryKey"`
+	UserID      string    `gorm:"index;not null"`
+	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	ExpiresAt   time.Time
 	Objective   string         `gorm:"type:text"`
 	FocusAreas  []string       `gorm:"type:jsonb;serializer:json"`
@@ -103,16 +103,16 @@ type Activity struct {
 }
 
 type DietPlan struct {
-	ID          string      `gorm:"primaryKey"`
-	UserID      string      `gorm:"index;not null"`
-	CreatedAt   time.Time   `gorm:"autoCreateTime"`
+	ID          string    `gorm:"primaryKey"`
+	UserID      string    `gorm:"index;not null"`
+	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	ExpiresAt   time.Time
 	Calories    int
-	Macros      Macros      `gorm:"type:jsonb;serializer:json"`
-	Meals       []Meal      `gorm:"type:jsonb;serializer:json"`
-	Hydration   string      `gorm:"type:text"`
-	Supplements []string    `gorm:"type:jsonb;serializer:json"`
-	AIReasoning string      `gorm:"type:text"`
+	Macros      Macros   `gorm:"type:jsonb;serializer:json"`
+	Meals       []Meal   `gorm:"type:jsonb;serializer:json"`
+	Hydration   string   `gorm:"type:text"`
+	Supplements []string `gorm:"type:jsonb;serializer:json"`
+	AIReasoning string   `gorm:"type:text"`
 }
 
 type Macros struct {
