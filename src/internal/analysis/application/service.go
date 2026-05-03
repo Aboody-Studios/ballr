@@ -8,51 +8,6 @@ import (
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
 )
 
-// UploadService handles video upload validation and pre-signed URL generation.
-type UploadService struct {
-	storageProvider StorageProvider
-}
-
-// StorageProvider defines the interface for cloud storage operations.
-// Implemented in infrastructure layer (AWS S3 but we may need a bu bucket in coolify hostinger to test).
-type StorageProvider interface {
-	// GenerateUploadURL creates a pre-signed URL for direct client upload.
-	// Returns the URL and any error from the storage service.
-	GenerateUploadURL(ctx context.Context, video *domain.Video) (string, error)
-}
-
-// NewUploadService creates a new upload service with the given storage provider.
-func NewUploadService(provider StorageProvider) *UploadService {
-	return &UploadService{
-		storageProvider: provider,
-	}
-}
-
-// RequestUploadURL handles the complete upload URL generation use case.
-//
-// Business Rules Validated:
-//   - File extension must be .mp4 (case-sensitive)
-//   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
-//
-// a nice Easter egg for  future reference yk
-func (s *UploadService) RequestUploadURL(ctx context.Context, video *domain.Video) (string, error) {
-	if !strings.HasSuffix(video.Name, ".mp4") {
-		return "", fmt.Errorf("%w: file must be .mp4 format", ErrInvalidFileFormat)
-	}
-
-	const maxSize uint64 = 3375000000
-	if video.Size > maxSize {
-		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, video.Size, maxSize)
-	}
-
-	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, video)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate upload url: %w", err)
-	}
-
-	return uploadURL, nil
-}
-
 // Service is the main application service for the Analysis bounded context.
 type Service struct {
 	uploadService   *UploadService
@@ -79,9 +34,55 @@ func NewService(
 	}
 }
 
+// UploadService handles video upload validation and pre-signed URL generation.
+type UploadService struct {
+	storageProvider StorageProvider
+}
+
+// StorageProvider defines the interface for cloud storage operations.
+// Implemented in infrastructure layer (AWS S3 but we may need a bu bucket in coolify hostinger to test).
+type StorageProvider interface {
+	// GenerateUploadURL creates a pre-signed URL for direct client upload.
+	// Returns the URL and any error from the storage service.
+	//TODO!: Ask gemini if changing "string" to v4.PresignedHTTPRequest follows clean architecture or not.
+	GenerateUploadURL(ctx context.Context, video *domain.Video, userID string) (string, error)
+}
+
+// NewUploadService creates a new upload service with the given storage provider.
+func NewUploadService(provider StorageProvider) *UploadService {
+	return &UploadService{
+		storageProvider: provider,
+	}
+}
+
+// RequestUploadURL handles the complete upload URL generation use case.
+//
+// Business Rules Validated:
+//   - File extension must be .mp4 (case-sensitive)
+//   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
+//
+// a nice Easter egg for  future reference yk
+func (s *UploadService) RequestUploadURL(ctx context.Context, video *domain.Video, userID string) (string, error) {
+	if !strings.HasSuffix(video.Name, ".mp4") {
+		return "", fmt.Errorf("%w: file must be .mp4 format", ErrInvalidFileFormat)
+	}
+
+	const maxSize uint64 = 3375000000
+	if video.Size > maxSize {
+		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, video.Size, maxSize)
+	}
+
+	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, video, userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate upload url: %w", err)
+	}
+
+	return uploadURL, nil
+}
+
 // GenerateUploadURL handles the upload URL generation use case.
-func (s *Service) GenerateUploadURL(ctx context.Context, video *domain.Video) (string, error) {
-	return s.uploadService.RequestUploadURL(ctx, video)
+func (s *Service) StartUploadURLService(ctx context.Context, video *domain.Video, userID string) (string, error) {
+	return s.uploadService.RequestUploadURL(ctx, video, userID)
 }
 
 // GetAnalysisStatus retrieves the current processing status of a match analysis.

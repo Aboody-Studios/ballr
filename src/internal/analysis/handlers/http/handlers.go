@@ -28,19 +28,25 @@ func NewAnalysisHandler(service *application.Service) *AnalysisHandler {
 // 4. Client uploads directly to S3
 // 5. Client notifies backend to start analysis
 // WARN!
-func (h *AnalysisHandler) UploadURLHandler(context *echo.Context) error {
+func (h *AnalysisHandler) UploadURLHandler(echoCtx *echo.Context) error {
 	var video domain.Video
-	if err := context.Bind(&video); err != nil {
+	if err := echoCtx.Bind(&video); err != nil {
 		return err
 	}
 
-	uploadURL, s3Err := h.analysisService.GenerateUploadURL(context.Request().Context(), &video)
+	jwt, err := delivery.ExtractToken(echoCtx)
 
-	if s3Err != nil {
-		return context.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	if err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
-	return context.JSON(http.StatusOK, map[string]string{"URL": uploadURL})
+	uploadURL, s3Err := h.analysisService.StartUploadURLService(echoCtx.Request().Context(), &video, jwt.ID)
+
+	if s3Err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	return echoCtx.JSON(http.StatusOK, map[string]string{"URL": uploadURL})
 }
 
 // GetAnalysisStatusHandler retrieves the current processing status of a match analysis.
