@@ -7,6 +7,7 @@ import (
 
 // Progress is the aggregate root for the Progress bounded context.
 // It represents a user's gamification state including points, streaks, and activity tracking.
+//TODO!: Remove gorm
 type Progress struct {
 	ID            string `gorm:"primaryKey"`
 	UserID        string `gorm:"uniqueIndex;not null"`
@@ -19,6 +20,7 @@ type Progress struct {
 
 // Achievement represents a badge or milestone unlocked by a user.
 // Achievements are value objects that are part of the Progress aggregate.
+//TODO!: Remove gorm
 type Achievement struct {
 	ID          string    `gorm:"primaryKey"`
 	UserID      string    `gorm:"uniqueIndex:idx_user_achievement;not null"`

@@ -25,7 +25,7 @@ func NewStorageRepository(s3Client *s3.Client, bucket string) *StorageRepository
 
 func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, matchID string) (string, error) {
 	filename := fmt.Sprintf("users/%s/videos/%s", userID, matchID)
-	//TODO!: Add proper video size validation by using an S3 Presigned POST to have a set of strictly enforced rules 
+	//TODO!: Add proper video size validation by using an S3 Presigned POST to have a set of strictly enforced rules
 	s3PutObj := &s3.PutObjectInput{
 		Bucket:      &r.bucket,
 		Key:         &filename,

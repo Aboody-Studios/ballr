@@ -50,6 +50,7 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 		return nil, fmt.Errorf("unverified email")
 	}
 
+	//TODO!: Remove gorm. Create service layer error. This is tight coupling.
 	dbUser, findErr := s.UserRepo.FindByEmail(ctx, googleUser.Email)
 	if findErr != nil {
 		if !errors.Is(findErr, gorm.ErrRecordNotFound) {

@@ -54,6 +54,8 @@ func main() {
 
 	// --- Analysis ---
 	//TODO!: Initiate services correctly using new structs and functions.
+	//TODO!: Use aws s3 access keys to initiate an s3 client,
+	// and copy bucket name from s3 to here and pass them to NewStorageRepository().
 	storageRepo := analysisinfrastructure.NewStorageRepository()
 	uploadService := analysisapplication.NewUploadService(storageRepo)
 	matchRepo := &analysisinfrastructure.PostgresMatchRepository{DB: db}

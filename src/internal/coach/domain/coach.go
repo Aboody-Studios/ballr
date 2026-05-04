@@ -7,6 +7,7 @@ import (
 
 // Conversation represents an AI coaching session with message history.
 // This is the aggregate root for the Coach bounded context.
+// TODO!: Remove gorm
 type Conversation struct {
 	ID        string    `gorm:"primaryKey"`
 	UserID    string    `gorm:"index;not null"`
@@ -63,6 +64,7 @@ type TrainingHistoryContext struct {
 	RecentDrills  []string
 }
 
+// TODO!: Remove gorm
 type TrainingPlan struct {
 	ID          string    `gorm:"primaryKey"`
 	UserID      string    `gorm:"index;not null"`
@@ -102,6 +104,7 @@ type Activity struct {
 	DurationMin int
 }
 
+// TODO!: Remove gorm
 type DietPlan struct {
 	ID          string    `gorm:"primaryKey"`
 	UserID      string    `gorm:"index;not null"`

@@ -28,6 +28,7 @@ const (
 	FootednessBoth  Footedness = "Both"
 )
 
+// TODO!: Remove gorm
 type User struct {
 	ID            string
 	Email         string `gorm:"uniqueIndex"`
