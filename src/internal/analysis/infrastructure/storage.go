@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/google/uuid"
 )
 
 // StorageRepository implements the domain.StorageRepository interface using AWS S3 or maybe we use coolify s3 bucket.
@@ -24,11 +23,13 @@ func NewStorageRepository(s3Client *s3.Client, bucket string) *StorageRepository
 	}
 }
 
-func (r *StorageRepository) GenerateUploadURL(ctx context.Context, video *domain.Video, userID string) (string, error) {
-	filename := fmt.Sprintf("users/%s/videos/%s", userID, uuid.NewString())
+func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, matchID string) (string, error) {
+	filename := fmt.Sprintf("users/%s/videos/%s", userID, matchID)
+	//TODO!: Add video size validation
 	s3PutObj := &s3.PutObjectInput{
-		Bucket: &r.bucket,
-		Key:    &filename,
+		Bucket:      &r.bucket,
+		Key:         &filename,
+		ContentType: aws.String("video/mp4"),
 	}
 	presignClient := s3.NewPresignClient(r.s3Client)
 

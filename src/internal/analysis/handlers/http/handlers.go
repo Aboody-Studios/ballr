@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/application"
-	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
@@ -12,12 +11,19 @@ import (
 // AnalysisHandler handles HTTP requests for the Analysis bounded context.
 // This includes video upload, match processing status, and analysis results.
 type AnalysisHandler struct {
-	analysisService *application.Service
+	analysisService *application.AnalysisService
 }
 
-// NewAnalysisHandler creates a new analysis handler with the required service.
-func NewAnalysisHandler(service *application.Service) *AnalysisHandler {
+type UploadHandler struct {
+	uploadService *application.UploadService
+}
+
+func NewAnalysisHandler(service *application.AnalysisService) *AnalysisHandler {
 	return &AnalysisHandler{analysisService: service}
+}
+
+func NewUploadService(service *application.UploadService) *UploadHandler {
+	return &UploadHandler{uploadService: service}
 }
 
 // UploadURLHandler generates pre-signed URLs for direct-to-S3 video uploads.
@@ -28,9 +34,9 @@ func NewAnalysisHandler(service *application.Service) *AnalysisHandler {
 // 4. Client uploads directly to S3
 // 5. Client notifies backend to start analysis
 // WARN!
-func (h *AnalysisHandler) UploadURLHandler(echoCtx *echo.Context) error {
-	var video domain.Video
-	if err := echoCtx.Bind(&video); err != nil {
+func (uploadHandler *UploadHandler) UploadURLHandler(echoCtx *echo.Context) error {
+	var matchRequest application.MatchRequest
+	if err := echoCtx.Bind(&matchRequest); err != nil {
 		return err
 	}
 
@@ -40,7 +46,7 @@ func (h *AnalysisHandler) UploadURLHandler(echoCtx *echo.Context) error {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
-	uploadURL, s3Err := h.analysisService.StartUploadURLService(echoCtx.Request().Context(), &video, jwt.ID)
+	uploadURL, s3Err := uploadHandler.uploadService.StartUploadURLService(echoCtx.Request().Context(), &matchRequest, jwt.ID)
 
 	if s3Err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -51,13 +57,13 @@ func (h *AnalysisHandler) UploadURLHandler(echoCtx *echo.Context) error {
 
 // GetAnalysisStatusHandler retrieves the current processing status of a match analysis.
 // Statuses: UPLOADING, PROCESSING, COMPLETED, FAILED
-func (h *AnalysisHandler) GetAnalysisStatusHandler(c *echo.Context) error {
+func (analysisHandler *AnalysisHandler) GetAnalysisStatusHandler(c *echo.Context) error {
 	matchID := c.Param("id")
 	if matchID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "match ID is required"})
 	}
 
-	status, err := h.analysisService.GetAnalysisStatus(c.Request().Context(), matchID)
+	status, err := analysisHandler.analysisService.GetAnalysisStatus(c.Request().Context(), matchID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "analysis not found"})
 	}
@@ -70,13 +76,13 @@ func (h *AnalysisHandler) GetAnalysisStatusHandler(c *echo.Context) error {
 
 // GetAnalysisReportHandler retrieves the complete analysis results for a match.
 // Returns the structured JSON with tracking data, heatmaps, events, and insights.
-func (h *AnalysisHandler) GetAnalysisReportHandler(c *echo.Context) error {
+func (analysisHandler *AnalysisHandler) GetAnalysisReportHandler(c *echo.Context) error {
 	matchID := c.Param("id")
 	if matchID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "match ID is required"})
 	}
 
-	report, err := h.analysisService.GetAnalysisReport(c.Request().Context(), matchID)
+	report, err := analysisHandler.analysisService.GetAnalysisReport(c.Request().Context(), matchID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "analysis report not found"})
 	}
@@ -86,7 +92,7 @@ func (h *AnalysisHandler) GetAnalysisReportHandler(c *echo.Context) error {
 
 // StartAnalysisHandler initiates the analysis pipeline after video upload completes.
 // Pushes job to Redis/SQS queue for the analysis worker to process.
-func (h *AnalysisHandler) StartAnalysisHandler(c *echo.Context) error {
+func (analysisHandler *AnalysisHandler) StartAnalysisHandler(c *echo.Context) error {
 	var req struct {
 		MatchID     string `json:"match_id"`
 		ShirtNumber int    `json:"shirt_number"`
@@ -107,7 +113,7 @@ func (h *AnalysisHandler) StartAnalysisHandler(c *echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
-	err = h.analysisService.StartAnalysis(c.Request().Context(), req.MatchID, claims.ID, req.ShirtNumber, req.Position, req.VideoURL)
+	err = analysisHandler.analysisService.StartAnalysis(c.Request().Context(), req.MatchID, claims.ID, req.ShirtNumber, req.Position, req.VideoURL)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start analysis"})
 	}
@@ -116,4 +122,16 @@ func (h *AnalysisHandler) StartAnalysisHandler(c *echo.Context) error {
 		"match_id": req.MatchID,
 		"status":   "PROCESSING",
 	})
+}
+
+func (ah *AnalysisHandler) SuccessfulVideoUploadHandler(echoCtx *echo.Context) error {
+	var s3Success application.S3Success
+	if err := echoCtx.Bind(&s3Success); err != nil {
+		return err
+	}
+
+	//ctx := echoCtx.Request().Context()
+	//TODO!: Persist success to db uploading column
+
+	return nil
 }

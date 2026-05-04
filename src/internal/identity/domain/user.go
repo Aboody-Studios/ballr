@@ -8,6 +8,7 @@ import (
 
 type Position string
 
+// TODO!: Add position to analysis domain and remove it from here
 const (
 	PositionGK Position = "GK"
 	PositionCB Position = "CB"

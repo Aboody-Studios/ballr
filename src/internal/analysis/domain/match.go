@@ -18,10 +18,10 @@ const (
 )
 
 // Match is the aggregate root for the Analysis bounded context.
+// TODO!: Remove gorm
 type Match struct {
 	ID             string          `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	UserID         string          `gorm:"index;not null"`
-	VideoURL       string          `gorm:"type:text"`
 	ShirtNumber    int             `gorm:"not null"`
 	PositionPlayed string          `gorm:"type:varchar(20)"`
 	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
@@ -35,7 +35,6 @@ type MatchMetadata struct {
 	MatchDate time.Time `json:"match_date"`
 	Duration  int       `json:"duration_seconds"`
 	Score     string    `json:"score,omitempty"`
-	Opponent  string    `json:"opponent,omitempty"`
 	Location  string    `json:"location,omitempty"`
 }
 
@@ -150,7 +149,6 @@ func (m *Match) MarkUploadComplete(videoURL string) error {
 		return ErrInvalidStatusTransition
 	}
 
-	m.VideoURL = videoURL
 	m.Status = MatchStatusProcessing
 	m.UploadedAt = time.Now()
 

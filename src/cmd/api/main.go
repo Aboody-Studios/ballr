@@ -53,6 +53,7 @@ func main() {
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 
 	// --- Analysis ---
+	//TODO!: Initiate services correctly using new structs and functions.
 	storageRepo := analysisinfrastructure.NewStorageRepository()
 	uploadService := analysisapplication.NewUploadService(storageRepo)
 	matchRepo := &analysisinfrastructure.PostgresMatchRepository{DB: db}

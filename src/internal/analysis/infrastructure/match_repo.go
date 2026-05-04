@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -12,6 +13,8 @@ type PostgresMatchRepository struct {
 }
 
 func (r *PostgresMatchRepository) Save(ctx context.Context, match *domain.Match) error {
+	videoID := uuid.New()
+	match.ID = videoID.String()
 	tx := r.DB.Save(match)
 	return tx.Error
 }

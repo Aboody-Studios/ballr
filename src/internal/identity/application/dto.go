@@ -16,6 +16,7 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
+// TODO!: Remove position from here as the player can have multiple positions in different matches.
 type ProfileResponse struct {
 	ID            string            `json:"id"`
 	Email         string            `json:"email"`

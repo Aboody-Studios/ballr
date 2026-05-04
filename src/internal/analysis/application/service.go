@@ -3,76 +3,54 @@ package application
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
 )
 
-// Service is the main application service for the Analysis bounded context.
-type Service struct {
-	uploadService   *UploadService
-	matchRepo       domain.MatchRepository
-	analysisRepo    domain.AnalysisRepository
-	storageProvider StorageProvider
-	jobQueue        domain.JobQueue
-}
-
-// NewService creates a new analysis application service with all dependencies.
-func NewService(
-	uploadService *UploadService,
-	matchRepo domain.MatchRepository,
-	analysisRepo domain.AnalysisRepository,
-	storageProvider StorageProvider,
-	jobQueue domain.JobQueue,
-) *Service {
-	return &Service{
-		uploadService:   uploadService,
-		matchRepo:       matchRepo,
-		analysisRepo:    analysisRepo,
-		storageProvider: storageProvider,
-		jobQueue:        jobQueue,
-	}
-}
-
-// UploadService handles video upload validation and pre-signed URL generation.
 type UploadService struct {
 	storageProvider StorageProvider
+	matchRepo       domain.MatchRepository
 }
 
-// StorageProvider defines the interface for cloud storage operations.
-// Implemented in infrastructure layer (AWS S3 but we may need a bu bucket in coolify hostinger to test).
-type StorageProvider interface {
-	// GenerateUploadURL creates a pre-signed URL for direct client upload.
-	// Returns the URL and any error from the storage service.
-	//TODO!: Ask gemini if changing "string" to v4.PresignedHTTPRequest follows clean architecture or not.
-	GenerateUploadURL(ctx context.Context, video *domain.Video, userID string) (string, error)
+type AnalysisService struct {
+	matchRepo    domain.MatchRepository
+	analysisRepo domain.AnalysisRepository
+	jobQueue     domain.JobQueue
 }
 
-// NewUploadService creates a new upload service with the given storage provider.
-func NewUploadService(provider StorageProvider) *UploadService {
+func NewUploadService(provider StorageProvider, repo domain.MatchRepository) *UploadService {
 	return &UploadService{
 		storageProvider: provider,
+		matchRepo:       repo,
 	}
 }
 
-// RequestUploadURL handles the complete upload URL generation use case.
-//
-// Business Rules Validated:
-//   - File extension must be .mp4 (case-sensitive)
-//   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
-//
-// a nice Easter egg for  future reference yk
-func (s *UploadService) RequestUploadURL(ctx context.Context, video *domain.Video, userID string) (string, error) {
-	if !strings.HasSuffix(video.Name, ".mp4") {
-		return "", fmt.Errorf("%w: file must be .mp4 format", ErrInvalidFileFormat)
+func NewAnalysisService(analysisRepo domain.AnalysisRepository, matchRepo domain.MatchRepository, queue domain.JobQueue) *AnalysisService {
+	return &AnalysisService{
+		analysisRepo: analysisRepo,
+		matchRepo:    matchRepo,
+		jobQueue:     queue,
+	}
+}
+
+func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *MatchRequest, userID string) (string, error) {
+	match := &domain.Match{
+		UserID:         userID,
+		ShirtNumber:    matchRequest.ShirtNumber,
+		PositionPlayed: matchRequest.Position,
+		Status:         domain.MatchStatusProcessing,
+		Metadata:       domain.MatchMetadata(matchRequest.Metadata),
+	}
+	// Saving to database first before generating upload url is essential because
+	// if it was the other way around and the persistence fails,
+	// we would have a match in s3 without a record in the database.
+	if err := s.matchRepo.Save(ctx, match); err != nil {
+		return "", err
 	}
 
-	const maxSize uint64 = 3375000000
-	if video.Size > maxSize {
-		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, video.Size, maxSize)
-	}
-
-	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, video, userID)
+	//match.ID is accessible here because a pointer to the match struct is passed to the database.
+	// Which means any changes to the struct in the repo layer will have its effects here also.
+	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, userID, match.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate upload url: %w", err)
 	}
@@ -81,12 +59,12 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, video *domain.Vide
 }
 
 // GenerateUploadURL handles the upload URL generation use case.
-func (s *Service) StartUploadURLService(ctx context.Context, video *domain.Video, userID string) (string, error) {
-	return s.uploadService.RequestUploadURL(ctx, video, userID)
+func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest *MatchRequest, userID string) (string, error) {
+	return s.RequestUploadURL(ctx, matchRequest, userID)
 }
 
 // GetAnalysisStatus retrieves the current processing status of a match analysis.
-func (s *Service) GetAnalysisStatus(ctx context.Context, matchID string) (string, error) {
+func (s *AnalysisService) GetAnalysisStatus(ctx context.Context, matchID string) (string, error) {
 	match, err := s.matchRepo.FindByID(ctx, matchID)
 	if err != nil {
 		return "", err
@@ -95,7 +73,7 @@ func (s *Service) GetAnalysisStatus(ctx context.Context, matchID string) (string
 }
 
 // GetAnalysisReport retrieves the complete analysis results for a match.
-func (s *Service) GetAnalysisReport(ctx context.Context, matchID string) (*domain.AnalysisResult, error) {
+func (s *AnalysisService) GetAnalysisReport(ctx context.Context, matchID string) (*domain.AnalysisResult, error) {
 	match, err := s.matchRepo.FindByID(ctx, matchID)
 	if err != nil {
 		return nil, err
@@ -114,7 +92,7 @@ func (s *Service) GetAnalysisReport(ctx context.Context, matchID string) (*domai
 }
 
 // StartAnalysis initiates the CV analysis pipeline after video upload.
-func (s *Service) StartAnalysis(ctx context.Context, matchID string, userID string, shirtNumber int, position, videoURL string) error {
+func (s *AnalysisService) StartAnalysis(ctx context.Context, matchID string, userID string, shirtNumber int, position, videoURL string) error {
 	metadata := domain.MatchMetadata{}
 
 	match, err := domain.NewMatch(matchID, userID, shirtNumber, position, metadata)
