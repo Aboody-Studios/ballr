@@ -33,7 +33,16 @@ func NewAnalysisService(analysisRepo domain.AnalysisRepository, matchRepo domain
 	}
 }
 
+// Business Rules Validated:
+//   - File extension must be .mp4 (case-sensitive)
+//   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
+//
+// a nice Easter egg for  future reference yk
 func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *MatchRequest, userID string) (string, error) {
+	if matchRequest.Size > 3375000000 {
+		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, matchRequest.Size, 3375000000)
+	}
+
 	match := &domain.Match{
 		UserID:         userID,
 		ShirtNumber:    matchRequest.ShirtNumber,
