@@ -11,6 +11,7 @@ import (
 
 	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/analysis/application"
 	analysishttp "github.com/Aboody-Studios/ballr/src/internal/analysis/handlers/http"
+	handlers "github.com/Aboody-Studios/ballr/src/internal/analysis/handlers/http"
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/analysis/infrastructure"
 	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
 	coachhttp "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
@@ -24,6 +25,8 @@ import (
 	sharedhttp "github.com/Aboody-Studios/ballr/src/internal/shared/delivery/http"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -53,17 +56,19 @@ func main() {
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 
 	// --- Analysis ---
-	//TODO!: Initiate services correctly using new structs and functions.
-	//TODO!: Use aws s3 access keys to initiate an s3 client,
-	// and copy bucket name from s3 to here and pass them to NewStorageRepository().
-	storageRepo := analysisinfrastructure.NewStorageRepository()
-	uploadService := analysisapplication.NewUploadService(storageRepo)
+	cfg, cfgErr := config.LoadDefaultConfig(context.TODO())
+	if cfgErr != nil {
+		log.Fatalf("aws default config loading failed:%s", cfgErr)
+	}
+	s3Client := s3.NewFromConfig(cfg)
+	storageRepo := analysisinfrastructure.NewStorageRepository(s3Client, os.Getenv("S3_BUCKET"))
 	matchRepo := &analysisinfrastructure.PostgresMatchRepository{DB: db}
+	uploadService := analysisapplication.NewUploadService(storageRepo, matchRepo)
+	uploadHandler := handlers.NewUploadHandler(uploadService)
 	analysisRepo := &analysisinfrastructure.PostgresAnalysisRepository{DB: db}
 	jobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
-	analysisService := analysisapplication.NewService(uploadService, matchRepo, analysisRepo, storageRepo, jobQueue)
-	analysisHandler := analysishttp.NewAnalysisHandler(analysisService)
-
+	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
+	analysisHandler := handlers.NewAnalysisHandler(analysisService)
 	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue)
 	analysisWorker.Start(context.Background())
 
@@ -104,7 +109,7 @@ func main() {
 	secureGroup.GET("/auth/me", identityHandler.GetProfileHandler)
 	secureGroup.PUT("/auth/profile", identityHandler.CompleteProfileHandler)
 
-	secureGroup.POST("/analysis/upload-url", analysisHandler.UploadURLHandler)
+	secureGroup.POST("/analysis/upload-url", uploadHandler.UploadURLHandler)
 	secureGroup.GET("/analysis/status/:id", analysisHandler.GetAnalysisStatusHandler)
 	secureGroup.GET("/analysis/report/:id", analysisHandler.GetAnalysisReportHandler)
 	secureGroup.POST("/analysis/start", analysisHandler.StartAnalysisHandler)

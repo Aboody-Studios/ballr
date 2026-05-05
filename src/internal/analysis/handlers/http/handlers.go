@@ -1,4 +1,4 @@
-package http
+package handlers
 
 import (
 	"net/http"
@@ -22,7 +22,7 @@ func NewAnalysisHandler(service *application.AnalysisService) *AnalysisHandler {
 	return &AnalysisHandler{analysisService: service}
 }
 
-func NewUploadService(service *application.UploadService) *UploadHandler {
+func NewUploadHandler(service *application.UploadService) *UploadHandler {
 	return &UploadHandler{uploadService: service}
 }
 
