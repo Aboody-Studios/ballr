@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
+	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/redis/go-redis/v9"
 )
 

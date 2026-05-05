@@ -23,3 +23,12 @@ func ExtractToken(echoCtx *echo.Context) (*domain.JWTCustomClaims, error) {
 
 	return claims, nil
 }
+
+func ExtractEmailFromJWT(echoCtx *echo.Context) (string, error) {
+	claims, err := ExtractToken(echoCtx)
+	if err != nil {
+		return "", err
+	}
+	return claims.Email, nil
+}
+

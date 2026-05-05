@@ -1,4 +1,4 @@
-package http
+package handlers
 
 import (
 	"errors"
@@ -76,12 +76,4 @@ func (h *IdentityHandler) RefreshTokenHandler(echoCtx *echo.Context) error {
 		RefreshToken: tokenPair.RefreshToken,
 		ExpiresIn:    tokenPair.ExpiresIn,
 	})
-}
-
-func ExtractEmailFromJWT(echoCtx *echo.Context) (string, error) {
-	claims, err := delivery.ExtractToken(echoCtx)
-	if err != nil {
-		return "", err
-	}
-	return claims.Email, nil
 }

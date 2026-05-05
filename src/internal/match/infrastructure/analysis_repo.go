@@ -3,7 +3,7 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
+	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"gorm.io/gorm"
 )
 

@@ -9,10 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/analysis/application"
-	analysishttp "github.com/Aboody-Studios/ballr/src/internal/analysis/handlers/http"
-	handlers "github.com/Aboody-Studios/ballr/src/internal/analysis/handlers/http"
-	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/analysis/infrastructure"
+	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/match/application"
+	matchhandlers "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
+	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
 	coachhttp "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
 	coachinfrastructure "github.com/Aboody-Studios/ballr/src/internal/coach/infrastructure"
@@ -22,7 +21,7 @@ import (
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
 	progresshttp "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/http"
 	progressinfrastructure "github.com/Aboody-Studios/ballr/src/internal/progress/infrastructure"
-	sharedhttp "github.com/Aboody-Studios/ballr/src/internal/shared/delivery/http"
+	shareddelivery "github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -64,11 +63,11 @@ func main() {
 	storageRepo := analysisinfrastructure.NewStorageRepository(s3Client, os.Getenv("S3_BUCKET"))
 	matchRepo := &analysisinfrastructure.PostgresMatchRepository{DB: db}
 	uploadService := analysisapplication.NewUploadService(storageRepo, matchRepo)
-	uploadHandler := handlers.NewUploadHandler(uploadService)
+	uploadHandler := matchhandlers.NewUploadHandler(uploadService)
 	analysisRepo := &analysisinfrastructure.PostgresAnalysisRepository{DB: db}
 	jobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
 	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
-	analysisHandler := handlers.NewAnalysisHandler(analysisService)
+	analysisHandler := matchhandlers.NewAnalysisHandler(analysisService)
 	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue)
 	analysisWorker.Start(context.Background())
 
@@ -104,7 +103,7 @@ func main() {
 	secureGroup := echoServer.Group("/secure")
 	echoJWTConfig := echojwt.Config{SigningKey: []byte(secretKey)}
 	secureGroup.Use(echojwt.WithConfig(echoJWTConfig))
-	secureGroup.Use(sharedhttp.RateLimiter(rdb))
+	secureGroup.Use(shareddelivery.RateLimiter(rdb))
 
 	secureGroup.GET("/auth/me", identityHandler.GetProfileHandler)
 	secureGroup.PUT("/auth/profile", identityHandler.CompleteProfileHandler)

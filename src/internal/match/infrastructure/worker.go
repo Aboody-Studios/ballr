@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Aboody-Studios/ballr/src/internal/analysis/domain"
+	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 )
 
 type Worker struct {

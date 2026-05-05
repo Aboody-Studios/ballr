@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/Aboody-Studios/ballr/src/internal/analysis/application"
+	"github.com/Aboody-Studios/ballr/src/internal/match/application"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
