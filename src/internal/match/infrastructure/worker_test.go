@@ -3,7 +3,8 @@ package infrastructure
 import (
 	"context"
 	"errors"
-	"math/rand"
+	"os"
+	"os/exec"
 	"sync"
 	"testing"
 	"time"
@@ -110,65 +111,157 @@ func (q *mockJobQueue) Pop(ctx context.Context) (*domain.AnalysisJob, error) {
 	return job, nil
 }
 
-func TestMockAnalysis(t *testing.T) {
-	result := mockAnalysis("m-1", "u-1")
-	if result == nil {
-		t.Fatal("expected non-nil result")
-	}
-	if result.MatchID != "m-1" {
-		t.Errorf("expected match m-1, got %s", result.MatchID)
-	}
-	if result.Summary.TotalDistanceKM < 8.5 || result.Summary.TotalDistanceKM > 12.5 {
-		t.Errorf("unexpected distance: %f", result.Summary.TotalDistanceKM)
-	}
-	if result.Summary.TopSpeedKMH < 28 || result.Summary.TopSpeedKMH > 36 {
-		t.Errorf("unexpected top speed: %f", result.Summary.TopSpeedKMH)
-	}
-	if len(result.Events) < 3 || len(result.Events) > 10 {
-		t.Errorf("expected 3-10 events, got %d", len(result.Events))
-	}
+type mockStorageRepo struct {
+	mu sync.Mutex
 }
 
-func TestGenerateMockEvents(t *testing.T) {
-	rng := rand.New(rand.NewSource(42))
-	events := generateMockEvents(rng)
-	if len(events) < 3 {
-		t.Errorf("expected at least 3 events, got %d", len(events))
+func (r *mockStorageRepo) DownloadVideo(_ context.Context, _, _ string) (string, error) {
+	f, err := os.CreateTemp("", "ballr-test-video-*.mp4")
+	if err != nil {
+		return "", err
 	}
-	for i, e := range events {
-		if e.Timestamp == "" {
-			t.Errorf("event %d has empty timestamp", i)
-		}
-		if e.Type == "" {
-			t.Errorf("event %d has empty type", i)
-		}
-		if e.Result == "" {
-			t.Errorf("event %d has empty result", i)
-		}
-	}
+	f.Close()
+	return f.Name(), nil
+}
+
+func (r *mockStorageRepo) UploadFile(_ context.Context, key, _, _ string) (string, error) {
+	return "https://mock-bucket.s3.amazonaws.com/" + key, nil
+}
+
+func (r *mockStorageRepo) GenerateUploadURL(_ context.Context, _, _ string) (string, error) {
+	return "https://mock-upload-url", nil
+}
+
+func (r *mockStorageRepo) GetDownloadURL(_ context.Context, _ string) (string, error) {
+	return "https://mock-download-url", nil
+}
+
+func (r *mockStorageRepo) DeleteVideo(_ context.Context, _ string) error {
+	return nil
 }
 
 func TestWorkerProcessJob(t *testing.T) {
 	matchRepo := &mockMatchRepo{matches: make(map[string]*domain.Match)}
-	matchRepo.Save(context.Background(), &domain.Match{
+	if err := matchRepo.Save(context.Background(), &domain.Match{
 		ID: "m-1", UserID: "u-1", ShirtNumber: 10, Status: domain.MatchStatusUploading,
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 	analysisRepo := &mockAnalysisRepo{analyses: make(map[string]*domain.AnalysisResult)}
 	jobQueue := newMockJobQueueWithJobs([]*domain.AnalysisJob{
 		{MatchID: "m-1", UserID: "u-1", VideoURL: "https://video.url", ShirtNumber: 10, Position: "CM"},
 	})
+	storageRepo := &mockStorageRepo{}
 
-	worker := NewWorker(matchRepo, analysisRepo, jobQueue)
+	oldExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "echo", `{"summary":{"total_distance":10.5,"top_speed":30.0,"pass_accuracy":0.75,"touches":50,"sprints":10},"heatmaps":{"overall_url":"https://s3.com/hm.png","defensive_url":"","attacking_url":""},"events":[{"timestamp":"15:20","type":"PASS","result":"SUCCESS","coordinates":{"x":45.0,"y":30.0},"insight":"Good pass"}],"tracking_data_url":""}`)
+	}
+	t.Cleanup(func() { execCommandContext = oldExec })
+
+	worker := NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	worker.Start(ctx)
 
-	time.Sleep(6 * time.Second)
+	time.Sleep(1 * time.Second)
 
-	match, _ := matchRepo.FindByID(context.Background(), "m-1")
-	if match != nil && match.Status != domain.MatchStatusCompleted {
-		t.Errorf("expected COMPLETED status, got %s", match.Status)
+	match, err := matchRepo.FindByID(context.Background(), "m-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if match.Status != domain.MatchStatusCompleted {
+		t.Errorf("expected COMPLETED, got %s", match.Status)
+	}
+
+	analysisRepo.mu.Lock()
+	analysis, ok := analysisRepo.analyses["m-1"]
+	analysisRepo.mu.Unlock()
+	if !ok {
+		t.Fatal("expected analysis to be saved")
+	}
+	if analysis.Summary.TotalDistanceKM != 10.5 {
+		t.Errorf("expected total_distance 10.5, got %f", analysis.Summary.TotalDistanceKM)
+	}
+	if analysis.Summary.TopSpeedKMH != 30.0 {
+		t.Errorf("expected top_speed 30.0, got %f", analysis.Summary.TopSpeedKMH)
+	}
+	if analysis.Summary.PassAccuracy != 0.75 {
+		t.Errorf("expected pass_accuracy 0.75, got %f", analysis.Summary.PassAccuracy)
+	}
+}
+
+func TestWorkerHandlesPythonCrash(t *testing.T) {
+	matchRepo := &mockMatchRepo{matches: make(map[string]*domain.Match)}
+	if err := matchRepo.Save(context.Background(), &domain.Match{
+		ID: "m-1", UserID: "u-1", ShirtNumber: 10, Status: domain.MatchStatusUploading,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	analysisRepo := &mockAnalysisRepo{analyses: make(map[string]*domain.AnalysisResult)}
+	jobQueue := newMockJobQueueWithJobs([]*domain.AnalysisJob{
+		{MatchID: "m-1", UserID: "u-1", VideoURL: "https://video.url", ShirtNumber: 10, Position: "CM"},
+	})
+	storageRepo := &mockStorageRepo{}
+
+	oldExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "sh", "-c", `echo "cv error" >&2; exit 1`)
+	}
+	t.Cleanup(func() { execCommandContext = oldExec })
+
+	worker := NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	worker.Start(ctx)
+
+	time.Sleep(18 * time.Second)
+
+	match, err := matchRepo.FindByID(context.Background(), "m-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if match.Status != domain.MatchStatusFailed {
+		t.Errorf("expected FAILED after retries exhausted, got %s", match.Status)
+	}
+}
+
+func TestWorkerHandlesTimeout(t *testing.T) {
+	matchRepo := &mockMatchRepo{matches: make(map[string]*domain.Match)}
+	if err := matchRepo.Save(context.Background(), &domain.Match{
+		ID: "m-1", UserID: "u-1", ShirtNumber: 10, Status: domain.MatchStatusUploading,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	analysisRepo := &mockAnalysisRepo{analyses: make(map[string]*domain.AnalysisResult)}
+	jobQueue := newMockJobQueueWithJobs([]*domain.AnalysisJob{
+		{MatchID: "m-1", UserID: "u-1", VideoURL: "https://video.url", ShirtNumber: 10, Position: "CM"},
+	})
+	storageRepo := &mockStorageRepo{}
+
+	oldExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "sleep", "60")
+	}
+	t.Cleanup(func() { execCommandContext = oldExec })
+
+	worker := NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	worker.Start(ctx)
+
+	<-ctx.Done()
+	time.Sleep(200 * time.Millisecond)
+
+	match, err := matchRepo.FindByID(context.Background(), "m-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if match.Status != domain.MatchStatusFailed {
+		t.Errorf("expected FAILED after timeout, got %s", match.Status)
 	}
 }
 
@@ -176,8 +269,9 @@ func TestWorkerContextCancellation(t *testing.T) {
 	matchRepo := &mockMatchRepo{matches: make(map[string]*domain.Match)}
 	analysisRepo := &mockAnalysisRepo{analyses: make(map[string]*domain.AnalysisResult)}
 	jobQueue := newMockJobQueueWithJobs(nil)
+	storageRepo := &mockStorageRepo{}
 
-	worker := NewWorker(matchRepo, analysisRepo, jobQueue)
+	worker := NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -199,8 +293,9 @@ func TestWorkerNoJobs(t *testing.T) {
 	matchRepo := &mockMatchRepo{matches: make(map[string]*domain.Match)}
 	analysisRepo := &mockAnalysisRepo{analyses: make(map[string]*domain.AnalysisResult)}
 	jobQueue := newMockJobQueueWithJobs(nil)
+	storageRepo := &mockStorageRepo{}
 
-	worker := NewWorker(matchRepo, analysisRepo, jobQueue)
+	worker := NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 

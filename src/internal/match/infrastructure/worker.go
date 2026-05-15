@@ -1,13 +1,39 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"math/rand"
+	"log/slog"
+	"os"
+	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
+)
+
+// execCommandContext is overridable for testing.
+var execCommandContext = exec.CommandContext
+
+// videoStorage provides video file operations for the CV pipeline.
+type videoStorage interface {
+	DownloadVideo(ctx context.Context, userID, matchID string) (string, error)
+	UploadFile(ctx context.Context, key, filePath, contentType string) (string, error)
+	GenerateUploadURL(ctx context.Context, userID, matchID string) (string, error)
+	GetDownloadURL(ctx context.Context, videoID string) (string, error)
+	DeleteVideo(ctx context.Context, videoID string) error
+}
+
+const (
+	cvPythonPath   = "python3"
+	cvScriptPath   = "src/cv/main.py"
+	jobTimeout     = 30 * time.Minute
+	maxRetries     = 3
+	retryBaseDelay = 5 * time.Second
 )
 
 type Worker struct {
@@ -15,14 +41,16 @@ type Worker struct {
 	analysisRepo   domain.AnalysisRepository
 	jobQueue       domain.JobQueue
 	eventPublisher events.Publisher
+	storageRepo    videoStorage
 }
 
-func NewWorker(matchRepo domain.MatchRepository, analysisRepo domain.AnalysisRepository, jobQueue domain.JobQueue) *Worker {
+func NewWorker(matchRepo domain.MatchRepository, analysisRepo domain.AnalysisRepository, jobQueue domain.JobQueue, storageRepo videoStorage) *Worker {
 	return &Worker{
 		matchRepo:      matchRepo,
 		analysisRepo:   analysisRepo,
 		jobQueue:       jobQueue,
 		eventPublisher: events.NoopPublisher(),
+		storageRepo:    storageRepo,
 	}
 }
 
@@ -53,85 +81,176 @@ func (w *Worker) run(ctx context.Context) {
 }
 
 func (w *Worker) processJob(ctx context.Context, job *domain.AnalysisJob) {
-	sleepDuration := time.Duration(2+rand.Intn(3)) * time.Second
-	select {
-	case <-ctx.Done():
-		return
-	case <-time.After(sleepDuration):
+	log := slog.With("match_id", job.MatchID, "user_id", job.UserID)
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
+			log.Info("retrying analysis", "attempt", attempt+1, "delay", delay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+			}
+		}
+
+		err := w.runAnalysis(ctx, job, log)
+		if err == nil {
+			return
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			log.Error("analysis cancelled/timeout", "error", err)
+			w.markFailed(ctx, job.MatchID, log)
+			return
+		}
+
+		lastErr = err
+		log.Error("analysis attempt failed", "attempt", attempt+1, "error", err)
 	}
 
-	result := mockAnalysis(job.MatchID, job.UserID)
-
-	if err := w.analysisRepo.Save(ctx, result); err != nil {
-		return
-	}
-
-	if err := w.matchRepo.UpdateStatus(ctx, job.MatchID, domain.MatchStatusCompleted); err != nil {
-		return
-	}
-
-	w.eventPublisher.PublishEvent(ctx, job.UserID, "ANALYSIS_COMPLETED", nil)
+	log.Error("all analysis attempts failed", "last_error", lastErr)
+	w.markFailed(ctx, job.MatchID, log)
 }
 
-// TODO: Replace mock analysis with real CV pipeline.
-// Required steps:
-//  1. Download video from S3 using matchID to construct the key: users/{userID}/videos/{matchID}
-//  2. Initialize CV model (YOLOv26/MediaPipe) - model selection should be configurable
-//  3. Run inference: extract player positions, ball trajectory, match events
-//  4. Compute summary statistics: distance, speed, pass accuracy, etc.
-//  5. Generate heatmap images and upload to S3
-//  6. Store structured analysis result via analysisRepo.Save()
-//  7. The mock URL patterns are: https://storage.example.com/heatmaps/{matchID}/*.png
-//     Replace with real S3 presigned URLs from the storage repository.
-func mockAnalysis(matchID, userID string) *domain.AnalysisResult {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *slog.Logger) error {
+	log.Info("downloading video from S3")
+	videoPath, err := w.storageRepo.DownloadVideo(ctx, job.UserID, job.MatchID)
+	if err != nil {
+		return fmt.Errorf("download video: %w", err)
+	}
+	defer os.Remove(videoPath)
+
+	jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
+	defer cancel()
+
+	scriptPath := os.Getenv("CV_SCRIPT_PATH")
+	if scriptPath == "" {
+		scriptPath = "src/cv/main.py"
+	}
+
+	log.Info("starting CV analysis")
+	cmd := execCommandContext(jobCtx, "python3", scriptPath,
+		"--video", videoPath,
+		"--match-id", job.MatchID,
+		"--user-id", job.UserID,
+		"--shirt-number", strconv.Itoa(job.ShirtNumber),
+		"--position", job.Position,
+	)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		if jobCtx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("analysis timed out after %v: %w", jobTimeout, context.DeadlineExceeded)
+		}
+		if jobCtx.Err() == context.Canceled {
+			return fmt.Errorf("analysis cancelled: %w", context.Canceled)
+		}
+		return fmt.Errorf("cv pipeline failed: %w\nstderr: %s", err, stderr.String())
+	}
+
+	if stderr.Len() > 0 {
+		log.Warn("cv pipeline stderr", "stderr", stderr.String())
+	}
+
+	var result cvResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		return fmt.Errorf("parse cv output: %w\noutput: %s", err, stdout.String())
+	}
+
+	analysis := result.toDomain(job.MatchID)
+
+	log.Info("saving analysis result")
+	if err := w.analysisRepo.Save(ctx, analysis); err != nil {
+		return fmt.Errorf("save analysis: %w", err)
+	}
+
+	log.Info("updating match status to completed")
+	if err := w.matchRepo.UpdateStatus(ctx, job.MatchID, domain.MatchStatusCompleted); err != nil {
+		return fmt.Errorf("update match status: %w", err)
+	}
+
+	if err := w.eventPublisher.PublishEvent(ctx, job.UserID, "ANALYSIS_COMPLETED", nil); err != nil {
+		log.Warn("failed to publish completion event", "error", err)
+	}
+
+	log.Info("analysis completed successfully")
+	return nil
+}
+
+func (w *Worker) markFailed(ctx context.Context, matchID string, log *slog.Logger) {
+	if err := w.matchRepo.UpdateStatus(ctx, matchID, domain.MatchStatusFailed); err != nil {
+		log.Error("failed to update match status to FAILED", "error", err)
+	}
+}
+
+// cvResult maps the JSON output from the Python CV pipeline.
+type cvResult struct {
+	Summary     cvSummary  `json:"summary"`
+	Heatmaps    cvHeatmaps `json:"heatmaps"`
+	Events      []cvEvent  `json:"events"`
+	TrackingURL string     `json:"tracking_data_url"`
+}
+
+type cvSummary struct {
+	TotalDistance float64 `json:"total_distance"`
+	TopSpeed      float64 `json:"top_speed"`
+	PassAccuracy  float64 `json:"pass_accuracy"`
+	Touches       int     `json:"touches"`
+	Sprints       int     `json:"sprints"`
+}
+
+type cvHeatmaps struct {
+	OverallURL   string `json:"overall_url"`
+	DefensiveURL string `json:"defensive_url"`
+	AttackingURL string `json:"attacking_url"`
+}
+
+type cvEvent struct {
+	Timestamp   string     `json:"timestamp"`
+	Type        string     `json:"type"`
+	Result      string     `json:"result"`
+	Coordinates cvPosition `json:"coordinates"`
+	Insight     string     `json:"insight"`
+}
+
+type cvPosition struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+func (r *cvResult) toDomain(matchID string) *domain.AnalysisResult {
+	events := make([]domain.MatchEvent, len(r.Events))
+	for i, e := range r.Events {
+		events[i] = domain.MatchEvent{
+			Timestamp:   e.Timestamp,
+			Type:        domain.EventType(e.Type),
+			Result:      domain.EventResult(e.Result),
+			Coordinates: domain.Position2D{X: e.Coordinates.X, Y: e.Coordinates.Y},
+			Insight:     e.Insight,
+		}
+	}
+
 	return &domain.AnalysisResult{
 		MatchID:     matchID,
 		GeneratedAt: time.Now(),
 		Summary: domain.AnalysisSummary{
-			TotalDistanceKM: 8.5 + rng.Float64()*4,
-			TopSpeedKMH:     28 + rng.Float64()*8,
-			PassAccuracy:    0.65 + rng.Float64()*0.3,
-			Touches:         40 + rng.Intn(60),
-			Sprints:         8 + rng.Intn(15),
+			TotalDistanceKM: r.Summary.TotalDistance,
+			TopSpeedKMH:     r.Summary.TopSpeed,
+			PassAccuracy:    r.Summary.PassAccuracy,
+			Touches:         r.Summary.Touches,
+			Sprints:         r.Summary.Sprints,
 		},
 		Heatmaps: domain.Heatmaps{
-			OverallURL:   fmt.Sprintf("https://storage.example.com/heatmaps/%s/overall.png", matchID),
-			DefensiveURL: fmt.Sprintf("https://storage.example.com/heatmaps/%s/defensive.png", matchID),
-			AttackingURL: fmt.Sprintf("https://storage.example.com/heatmaps/%s/attacking.png", matchID),
+			OverallURL:   r.Heatmaps.OverallURL,
+			DefensiveURL: r.Heatmaps.DefensiveURL,
+			AttackingURL: r.Heatmaps.AttackingURL,
 		},
-		Events:          generateMockEvents(rng),
-		TrackingDataURL: fmt.Sprintf("https://storage.example.com/tracking/%s/data.json", matchID),
+		Events:          events,
+		TrackingDataURL: r.TrackingURL,
 	}
-}
-
-func generateMockEvents(rng *rand.Rand) []domain.MatchEvent {
-	eventTypes := []domain.EventType{
-		domain.EventTypePass, domain.EventTypeShot, domain.EventTypeDribble,
-		domain.EventTypeTackle, domain.EventTypeSprint, domain.EventTypeRecovery,
-	}
-	results := []domain.EventResult{
-		domain.EventResultSuccess, domain.EventResultFailure, domain.EventResultNeutral,
-	}
-	insights := []string{
-		"Accurate through ball to striker",
-		"Powerful shot on target",
-		"Close control dribble past defender",
-		"Clean tackle to regain possession",
-		"Explosive sprint to chase down attacker",
-		"Quick recovery to defensive position",
-	}
-
-	n := 3 + rng.Intn(8)
-	events := make([]domain.MatchEvent, n)
-	for i := range events {
-		events[i] = domain.MatchEvent{
-			Timestamp:   fmt.Sprintf("%02d:%02d:%02d", rng.Intn(90), rng.Intn(60), rng.Intn(60)),
-			Type:        eventTypes[rng.Intn(len(eventTypes))],
-			Result:      results[rng.Intn(len(results))],
-			Coordinates: domain.Position2D{X: rng.Float64() * 100, Y: rng.Float64() * 100},
-			Insight:     insights[rng.Intn(len(insights))],
-		}
-	}
-	return events
 }
