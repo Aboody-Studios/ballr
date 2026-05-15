@@ -34,40 +34,48 @@ def _parse_yolo_boxes(result) -> list[dict]:
     return detections
 
 
-def detect_players(frame: np.ndarray, conf_threshold: float = 0.5) -> list[dict]:
+def detect_all(frame: np.ndarray, conf_threshold: float = 0.5) -> tuple[list[dict], Optional[dict]]:
+    """Run detection once, return (players, ball) from a single model invocation."""
     model = get_detection_model()
     results = model(frame, verbose=False)
     if not results or len(results) == 0:
-        return []
+        return [], None
+
     all_dets = _parse_yolo_boxes(results[0])
     players = [
-        d
-        for d in all_dets
+        d for d in all_dets
         if d["class"] in _PLAYER_CLASSES and d["confidence"] >= conf_threshold
     ]
+    ball = None
+    for d in all_dets:
+        if d["class"] == "ball" and d["confidence"] >= conf_threshold:
+            ball = d
+            break
+
+    if ball is None:
+        try:
+            fallback = get_ball_model()
+            fb_results = fallback(frame, verbose=False)
+            if fb_results and len(fb_results) > 0:
+                fb_dets = _parse_yolo_boxes(fb_results[0])
+                if fb_dets:
+                    best = max(fb_dets, key=lambda x: x["confidence"])
+                    if best["confidence"] >= conf_threshold:
+                        ball = best
+        except Exception:
+            logger.warning("ball fallback model unavailable", exc_info=True)
+
+    return players, ball
+
+
+def detect_players(frame: np.ndarray, conf_threshold: float = 0.5) -> list[dict]:
+    players, _ = detect_all(frame, conf_threshold)
     return players
 
 
 def detect_ball(frame: np.ndarray, conf_threshold: float = 0.5) -> Optional[dict]:
-    model = get_detection_model()
-    results = model(frame, verbose=False)
-    if results and len(results) > 0:
-        all_dets = _parse_yolo_boxes(results[0])
-        for d in all_dets:
-            if d["class"] == "ball" and d["confidence"] >= conf_threshold:
-                return d
-    try:
-        fallback = get_ball_model()
-        fb_results = fallback(frame, verbose=False)
-        if fb_results and len(fb_results) > 0:
-            fb_dets = _parse_yolo_boxes(fb_results[0])
-            if fb_dets:
-                best = max(fb_dets, key=lambda x: x["confidence"])
-                if best["confidence"] >= conf_threshold:
-                    return best
-    except Exception:
-        logger.debug("ball fallback model unavailable", exc_info=True)
-    return None
+    _, ball = detect_all(frame, conf_threshold)
+    return ball
 
 
 def select_target_player(

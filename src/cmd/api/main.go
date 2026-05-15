@@ -75,7 +75,7 @@ func main() {
 	jobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
 	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
 	analysisHandler := matchhandlers.NewAnalysisHandlerWithUpload(analysisService, uploadService)
-	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue)
+	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	analysisWorker.Start(workerCtx)
 

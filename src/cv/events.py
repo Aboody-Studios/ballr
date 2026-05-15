@@ -236,7 +236,7 @@ def detect_scanning(history: list[dict]) -> list[dict]:
                 coords = _pitch_coords(h["player_center"]) if h.get("player_center") else {"x": 50.0, "y": 50.0}
                 events.append({
                     "timestamp": _make_ts(h),
-                    "type": "RECOVERY",
+                    "type": "SCANNING",
                     "result": "NEUTRAL",
                     "coordinates": coords,
                     "insight": f"Scanning: head turned {orientation}",

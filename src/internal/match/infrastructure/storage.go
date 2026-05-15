@@ -3,6 +3,8 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -65,4 +67,56 @@ func (r *StorageRepository) DeleteVideo(ctx context.Context, videoID string) err
 	}
 
 	return nil
+}
+
+func (r *StorageRepository) DownloadVideo(ctx context.Context, userID, matchID string) (string, error) {
+	key := fmt.Sprintf("users/%s/videos/%s", userID, matchID)
+
+	tmpFile, err := os.CreateTemp("", "ballr-video-*.mp4")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+
+	output, err := r.s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &r.bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("failed to get object from S3: %w", err)
+	}
+	defer output.Body.Close()
+
+	if _, err := io.Copy(tmpFile, output.Body); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("failed to copy S3 object to temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	return tmpFile.Name(), nil
+}
+
+func (r *StorageRepository) UploadFile(ctx context.Context, key, filePath, contentType string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	_, err = r.s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      &r.bucket,
+		Key:         &key,
+		Body:        file,
+		ContentType: &contentType,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to upload file to S3: %w", err)
+	}
+
+	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", r.bucket, key), nil
 }

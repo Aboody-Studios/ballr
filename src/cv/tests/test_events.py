@@ -206,7 +206,7 @@ class TestDetectScanning:
         ]
         events = detect_scanning(history)
         assert len(events) == 1
-        assert events[0]["type"] == "RECOVERY"
+        assert events[0]["type"] == "SCANNING"
 
     def test_no_change_returns_empty(self):
         history = [

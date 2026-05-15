@@ -4,7 +4,7 @@ import os
 import cv2
 
 import config
-from detector import detect_ball, detect_players, select_target_player
+from detector import detect_all, select_target_player
 from events import extract_events, compute_summary
 from heatmap import generate_all_heatmaps, upload_tracking_data
 from models import get_detection_model, get_pose_model, unload_models
@@ -41,8 +41,8 @@ def run_pipeline(
             original_fps = 30.0
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        if total_frames < 10:
-            raise ValueError(f"video too short: {total_frames} frames, minimum 10 required")
+        if total_frames < config.CV_MIN_FRAMES:
+            raise ValueError(f"video too short: {total_frames} frames, minimum {config.CV_MIN_FRAMES} required")
 
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -81,7 +81,7 @@ def run_pipeline(
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             timestamp = _format_timestamp(frame_idx, original_fps)
 
-            player_detections = detect_players(frame, conf_threshold=config.CV_DETECTION_CONF)
+            player_detections, ball_detection = detect_all(frame, conf_threshold=config.CV_DETECTION_CONF)
             target = select_target_player(player_detections, frame_center)
 
             keypoints = None
@@ -102,7 +102,6 @@ def run_pipeline(
                 if consecutive_misses > 100:
                     logger.warning("no player detection for %d frames (frame %d)", consecutive_misses, frame_idx)
 
-            ball_detection = detect_ball(frame, conf_threshold=config.CV_DETECTION_CONF)
             ball_center = ball_detection["center"] if ball_detection else None
 
             tracker.update(
@@ -121,17 +120,16 @@ def run_pipeline(
             processed_count += 1
             frame_idx += 1
 
-    except Exception:
-        raise
     finally:
         cap.release()
+        unload_models()
 
     logger.info("processed %d frames", processed_count)
 
     history = tracker.get_history()
     if not history or not any(h.get("player_center") for h in history):
         logger.warning("no player detections in any frame, returning empty result")
-        empty = {
+        return {
             "match_id": match_id,
             "summary": {
                 "total_distance": 0.0,
@@ -144,8 +142,6 @@ def run_pipeline(
             "events": [],
             "tracking_data_url": "",
         }
-        unload_models()
-        return empty
 
     events = extract_events(history)
     summary = compute_summary(history, events)
@@ -157,12 +153,10 @@ def run_pipeline(
 
     tracking_url = upload_tracking_data(history, match_id, bucket) if history else ""
 
-    result = {
+    return {
         "match_id": match_id,
         "summary": summary,
         "heatmaps": heatmaps,
         "events": events,
         "tracking_data_url": tracking_url,
     }
-    unload_models()
-    return result

@@ -2,16 +2,28 @@ import logging
 from typing import Optional
 
 import numpy as np
-
 from models import get_pose_model
 
 logger = logging.getLogger(__name__)
 
 COCO_KEYPOINT_NAMES = [
-    "nose", "left_eye", "right_eye", "left_ear", "right_ear",
-    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
-    "left_wrist", "right_wrist", "left_hip", "right_hip",
-    "left_knee", "right_knee", "left_ankle", "right_ankle",
+    "nose",
+    "left_eye",
+    "right_eye",
+    "left_ear",
+    "right_ear",
+    "left_shoulder",
+    "right_shoulder",
+    "left_elbow",
+    "right_elbow",
+    "left_wrist",
+    "right_wrist",
+    "left_hip",
+    "right_hip",
+    "left_knee",
+    "right_knee",
+    "left_ankle",
+    "right_ankle",
 ]
 
 _FOOT_INDICES = [15, 16, 13, 14]
@@ -49,7 +61,9 @@ def _parse_pose_keypoints(result) -> list[list[tuple[float, float, float]]]:
     return people
 
 
-def estimate_pose(frame: np.ndarray, bbox: tuple, conf_threshold: float = 0.5) -> Optional[dict]:
+def estimate_pose(
+    frame: np.ndarray, bbox: tuple, conf_threshold: float = 0.5
+) -> Optional[dict]:
     model = get_pose_model()
     results = model(frame, verbose=False, conf=conf_threshold)
     if not results or len(results) == 0:
@@ -92,9 +106,11 @@ def compute_angle(a: tuple, b: tuple, c: tuple) -> float:
 
 
 def compute_joint_angles(keypoints: list) -> dict:
-    kp = {name: (keypoints[i][0], keypoints[i][1])
-          for i, name in enumerate(COCO_KEYPOINT_NAMES)
-          if i < len(keypoints) and keypoints[i][2] > 0.3}
+    kp = {
+        name: (keypoints[i][0], keypoints[i][1])
+        for i, name in enumerate(COCO_KEYPOINT_NAMES)
+        if i < len(keypoints) and keypoints[i][2] > 0.3
+    }
     angles = {}
     angle_defs = [
         ("left_knee", "left_hip", "left_knee", "left_ankle"),
