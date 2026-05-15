@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Optional
 
 import numpy as np
 
@@ -75,7 +76,22 @@ def _upload_to_s3(file_path: str, bucket: str, s3_key: str) -> str:
         return ""
 
 
-def _scale_pos(pc: tuple[float, float]) -> tuple[float, float]:
+def _scale_pos(
+    pc: tuple[float, float], H: Optional[np.ndarray] = None
+) -> tuple[float, float]:
+    if H is not None:
+        try:
+            from pitch import pixel_to_pitch
+
+            x_pct, y_pct = pixel_to_pitch(pc[0], pc[1], H)
+            sx = x_pct * (config.CV_HEATMAP_WIDTH / 100.0)
+            sy = y_pct * (config.CV_HEATMAP_HEIGHT / 100.0)
+            return (
+                max(0, min(config.CV_HEATMAP_WIDTH, sx)),
+                max(0, min(config.CV_HEATMAP_HEIGHT, sy)),
+            )
+        except Exception:
+            pass
     sx = pc[0] * (config.CV_HEATMAP_WIDTH / 1920.0)
     sy = pc[1] * (config.CV_HEATMAP_HEIGHT / 1080.0)
     return (max(0, min(config.CV_HEATMAP_WIDTH, sx)),
@@ -87,6 +103,7 @@ def generate_all_heatmaps(
     match_id: str,
     output_dir: str,
     bucket: str = "",
+    homography: Optional[np.ndarray] = None,
 ) -> dict:
     os.makedirs(output_dir, exist_ok=True)
     all_positions = []
@@ -96,7 +113,7 @@ def generate_all_heatmaps(
         pc = h.get("player_center")
         if pc is None:
             continue
-        scaled = _scale_pos(pc)
+        scaled = _scale_pos(pc, homography)
         all_positions.append(scaled)
         if scaled[1] < config.CV_HEATMAP_HEIGHT / 2:
             defensive.append(scaled)

@@ -1,8 +1,13 @@
 import math
+from typing import Optional
+
+import numpy as np
 
 import config
 
 logger = __import__("logging").getLogger(__name__)
+
+_HOMOGRAPHY: Optional[np.ndarray] = None
 
 _FOOT_INDICES = [13, 14, 15, 16]
 _FOOT_PROXIMITY_PX = 2.0 * config.CV_PX_PER_METER
@@ -13,6 +18,8 @@ _DRIBBLE_PROXIMITY_FRAMES = 3
 _TACKLE_SPEED_HIGH = 5.0
 _TACKLE_SPEED_LOW = 1.0
 _TACKLE_WINDOW = 3
+_SAVE_SPEED_THRESHOLD = _SHOT_SPEED_THRESHOLD * 0.5
+_SAVE_PROXIMITY = _FOOT_PROXIMITY_PX * 3
 
 
 def _min_foot_distance(ball_center: tuple[float, float], keypoints: list) -> float:
@@ -50,7 +57,23 @@ def _ball_velocity_changes(history: list[dict], i: int, window: int = 3) -> bool
     return cos_angle < -0.3
 
 
-def _pitch_coords(pixel_center: tuple[float, float], frame_size: tuple[int, int] = (1920, 1080)) -> dict:
+def set_homography(H: Optional[np.ndarray]) -> None:
+    global _HOMOGRAPHY
+    _HOMOGRAPHY = H
+
+
+def _pitch_coords(
+    pixel_center: tuple[float, float],
+    frame_size: tuple[int, int] = (1920, 1080),
+) -> dict:
+    if _HOMOGRAPHY is not None and pixel_center is not None:
+        try:
+            from pitch import pixel_to_pitch
+
+            x_pct, y_pct = pixel_to_pitch(pixel_center[0], pixel_center[1], _HOMOGRAPHY)
+            return {"x": round(x_pct, 1), "y": round(y_pct, 1)}
+        except Exception:
+            pass
     fx, fy = pixel_center
     fw, fh = frame_size
     return {
@@ -245,6 +268,38 @@ def detect_scanning(history: list[dict]) -> list[dict]:
     return events
 
 
+def detect_saves(history: list[dict]) -> list[dict]:
+    events = []
+    for i in range(2, len(history)):
+        h = history[i]
+        if h["ball_center"] is None or h["keypoints"] is None:
+            continue
+        ball_speed = h.get("ball_speed", 0)
+        if ball_speed < _SAVE_SPEED_THRESHOLD:
+            continue
+        foot_dist = _min_foot_distance(h["ball_center"], h["keypoints"])
+        if foot_dist > _SAVE_PROXIMITY:
+            continue
+        vel_change = _ball_velocity_changes(history, i)
+        if not vel_change:
+            continue
+        coords = _pitch_coords(h["player_center"]) if h.get("player_center") else _pitch_coords(h["ball_center"])
+        if i > 0:
+            prev_ball_speed = history[i - 1].get("ball_speed", 0)
+            speed_drop = prev_ball_speed - ball_speed
+            result = "SUCCESS" if speed_drop > 2.0 else "NEUTRAL"
+        else:
+            result = "NEUTRAL"
+        events.append({
+            "timestamp": _make_ts(h),
+            "type": "SAVE",
+            "result": result,
+            "coordinates": coords,
+            "insight": f"Save: ball deflected at {_make_ts(h)}, speed {ball_speed:.1f}m/s",
+        })
+    return events
+
+
 def extract_events(history: list[dict]) -> list[dict]:
     passes = detect_passes(history)
     shots = detect_shots(history)
@@ -252,7 +307,8 @@ def extract_events(history: list[dict]) -> list[dict]:
     sprints = detect_sprints(history)
     tackles = detect_tackles(history)
     scanning = detect_scanning(history)
-    all_events = passes + shots + dribbles + sprints + tackles + scanning
+    saves = detect_saves(history)
+    all_events = passes + shots + dribbles + sprints + tackles + scanning + saves
     all_events.sort(key=lambda e: e["timestamp"])
     return all_events
 
@@ -274,6 +330,8 @@ def compute_summary(history: list[dict], events: list[dict]) -> dict:
     for e in events:
         if e["type"] == "DRIBBLE":
             touches += 2
+        elif e["type"] == "SAVE":
+            touches += 1
     return {
         "total_distance": round(total_distance_m / 1000.0, 2),
         "top_speed": round(top_speed_ms * 3.6, 1),

@@ -10,6 +10,7 @@ from events import (
     compute_summary,
     detect_dribbles,
     detect_passes,
+    detect_saves,
     detect_scanning,
     detect_shots,
     detect_sprints,
@@ -223,6 +224,66 @@ class TestDetectScanning:
         assert detect_scanning(history) == []
 
 
+class TestDetectSaves:
+    def test_detects_save_with_high_speed_and_deflection(self):
+        ball_near = _ball_near_foot_center()
+        history = []
+        for i in range(5):
+            vel = (3.0, 0.0) if i < 3 else (-2.0, 0.0)
+            bs = 8.0 if i == 3 else 5.0
+            bc = ball_near if i >= 3 else (999, 999)
+            e = _make_entry(frame_idx=i, ball_center=bc, ball_speed=bs, ball_velocity=vel)
+            history.append(e)
+        events = detect_saves(history)
+        assert len(events) == 1
+        assert events[0]["type"] == "SAVE"
+
+    def test_no_save_when_ball_speed_low(self):
+        ball_near = _ball_near_foot_center()
+        history = [_make_entry(frame_idx=i, ball_center=ball_near, ball_speed=4.0) for i in range(5)]
+        assert detect_saves(history) == []
+
+    def test_no_save_when_ball_not_near_player(self):
+        history = [_make_entry(frame_idx=i, ball_center=(999, 999), ball_speed=8.0) for i in range(5)]
+        assert detect_saves(history) == []
+
+    def test_no_save_without_velocity_change(self):
+        ball_near = _ball_near_foot_center()
+        history = []
+        for i in range(5):
+            bs = 8.0 if i >= 3 else 5.0
+            e = _make_entry(frame_idx=i, ball_center=ball_near, ball_speed=bs, ball_velocity=(3.0, 0.0))
+            history.append(e)
+        assert detect_saves(history) == []
+
+    def test_save_detected_as_success_when_speed_drops(self):
+        ball_near = _ball_near_foot_center()
+        history = []
+        for i in range(5):
+            vel = (3.0, 0.0) if i < 3 else (-2.0, 0.0)
+            bs = 15.0 if i == 2 else (7.0 if i == 3 else 5.0)
+            bc = ball_near if i >= 3 else (999, 999)
+            e = _make_entry(frame_idx=i, ball_center=bc, ball_speed=bs, ball_velocity=vel)
+            history.append(e)
+        events = detect_saves(history)
+        assert len(events) == 1
+        assert events[0]["result"] == "SUCCESS"
+
+    def test_save_integration_in_extract_events(self):
+        ball_near = _ball_near_foot_center()
+        history = []
+        for i in range(5):
+            vel = (3.0, 0.0) if i < 3 else (-2.0, 0.0)
+            bs = 8.0 if i == 3 else 5.0
+            bc = ball_near if i >= 3 else (999, 999)
+            ps = 2.0 if i < 4 else 0.5
+            e = _make_entry(frame_idx=i, ball_center=bc, ball_speed=bs, ball_velocity=vel, player_speed=ps)
+            history.append(e)
+        events = extract_events(history)
+        types = [ev["type"] for ev in events]
+        assert "SAVE" in types
+
+
 class TestExtractEvents:
     def test_returns_sorted_events(self):
         ball_near = _ball_near_foot_center()
@@ -273,3 +334,11 @@ class TestComputeSummary:
         assert summary["top_speed"] == 0.0
         assert summary["touches"] == 0
         assert summary["sprints"] == 0
+
+    def test_save_event_counts_as_touch(self):
+        history = [_make_entry(frame_idx=i) for i in range(3)]
+        events = [
+            {"type": "SAVE", "result": "SUCCESS", "timestamp": "00:00"},
+        ]
+        summary = compute_summary(history, events)
+        assert summary["touches"] == 1

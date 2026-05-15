@@ -73,3 +73,13 @@ def test_cv_kalman_process_noise_default():
 def test_cv_kalman_measurement_noise_default():
     _reload_with_env({"CV_KALMAN_MEASUREMENT_NOISE": None})
     assert config.CV_KALMAN_MEASUREMENT_NOISE == 1e-2
+
+
+def test_cv_enable_ocr_default():
+    _reload_with_env({"CV_ENABLE_OCR": None})
+    assert config.CV_ENABLE_OCR is True
+
+
+def test_cv_enable_ocr_disabled():
+    _reload_with_env({"CV_ENABLE_OCR": "0"})
+    assert config.CV_ENABLE_OCR is False

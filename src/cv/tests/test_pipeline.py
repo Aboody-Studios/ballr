@@ -28,12 +28,11 @@ class TestRunPipeline:
         mock_summary = {"total_distance": 0.5, "top_speed": 10.0, "pass_accuracy": 1.0, "touches": 2, "sprints": 1}
         mock_heatmaps = {"overall_url": "", "defensive_url": "", "attacking_url": ""}
 
+        mock_player = {"bbox": (100, 200, 300, 400), "confidence": 0.95, "class": "player", "center": (200, 300)}
+        mock_ball = {"bbox": (400, 300, 420, 320), "confidence": 0.8, "class": "ball", "center": (410, 310)}
         patches = [
-            patch("pipeline.detect_players", return_value=[
-                {"bbox": (100, 200, 300, 400), "confidence": 0.95, "class": "player", "center": (200, 300)},
-            ]),
-            patch("pipeline.detect_ball", return_value={"bbox": (400, 300, 420, 320), "confidence": 0.8, "class": "ball", "center": (410, 310)}),
-            patch("pipeline.select_target_player", return_value={"bbox": (100, 200, 300, 400), "confidence": 0.95, "class": "player", "center": (200, 300)}),
+            patch("pipeline.detect_all", return_value=([mock_player], mock_ball)),
+            patch("pipeline.select_target_player", return_value=mock_player),
             patch("pipeline.estimate_pose", return_value={"keypoints": [(200, 300, 0.9) for _ in range(17)], "confidence": 0.9}),
             patch("pipeline.compute_joint_angles", return_value={"left_knee": 90.0}),
             patch("pipeline.compute_head_orientation", return_value="center"),
@@ -99,8 +98,7 @@ class TestRunPipeline:
         _create_synthetic_video(video_path, num_frames=15)
 
         patches = [
-            patch("pipeline.detect_players", return_value=[]),
-            patch("pipeline.detect_ball", return_value=None),
+            patch("pipeline.detect_all", return_value=([], None)),
             patch("pipeline.select_target_player", return_value=None),
             patch("pipeline.estimate_pose", return_value=None),
             patch("pipeline.generate_all_heatmaps", return_value={"overall_url": "", "defensive_url": "", "attacking_url": ""}),

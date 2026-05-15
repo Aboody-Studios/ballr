@@ -7,3 +7,6 @@ scipy>=1.12.0
 Pillow>=10.0.0
 torch>=2.0.0
 torchvision>=0.15.0
+# Optional:
+paddlepaddle>=3.0.0
+paddleocr>=2.9.0

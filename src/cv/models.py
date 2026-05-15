@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 _detection_model = None
 _pose_model = None
 _ball_model = None
+_pitch_model = None
 
 
 def get_detection_model() -> YOLO:
@@ -37,10 +38,20 @@ def get_ball_model() -> YOLO:
     return _ball_model
 
 
+def get_pitch_model() -> YOLO:
+    global _pitch_model
+    if _pitch_model is None:
+        model_name = config.CV_MODEL_PITCH
+        logger.info("loading pitch detection model: %s", model_name)
+        _pitch_model = YOLO(model_name)
+    return _pitch_model
+
+
 def unload_models() -> None:
-    global _detection_model, _pose_model, _ball_model
+    global _detection_model, _pose_model, _ball_model, _pitch_model
     _detection_model = None
     _pose_model = None
     _ball_model = None
+    _pitch_model = None
     import gc
     gc.collect()

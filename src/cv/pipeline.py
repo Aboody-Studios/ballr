@@ -7,7 +7,9 @@ import config
 from detector import detect_all, select_target_player
 from events import extract_events, compute_summary
 from heatmap import generate_all_heatmaps, upload_tracking_data
-from models import get_detection_model, get_pose_model, unload_models
+from events import set_homography
+from models import get_detection_model, get_pose_model, get_pitch_model, unload_models
+from pitch import compute_homography, detect_pitch_keypoints
 from pose import compute_head_orientation, compute_joint_angles, estimate_pose
 from tracker import TrackingState
 
@@ -58,6 +60,7 @@ def run_pipeline(
 
         get_detection_model()
         get_pose_model()
+        get_pitch_model()
 
         tracker = TrackingState(
             process_noise=config.CV_KALMAN_PROCESS_NOISE,
@@ -69,6 +72,9 @@ def run_pipeline(
         consecutive_misses = 0
         processed_count = 0
 
+        pitch_interval = max(1, int(original_fps * 50))
+        homography = None
+
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -79,10 +85,29 @@ def run_pipeline(
                 continue
 
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            if frame_idx % pitch_interval == 0:
+                try:
+                    pitch_kps = detect_pitch_keypoints(frame)
+                    H = compute_homography(pitch_kps)
+                    if H is not None:
+                        homography = H
+                        set_homography(H)
+                        logger.info("homography computed from pitch keypoints on frame %d", frame_idx)
+                    else:
+                        logger.warning("could not compute homography on frame %d, using naive fallback", frame_idx)
+                except Exception:
+                    logger.exception("pitch detection failed on frame %d", frame_idx)
             timestamp = _format_timestamp(frame_idx, original_fps)
 
             player_detections, ball_detection = detect_all(frame, conf_threshold=config.CV_DETECTION_CONF)
-            target = select_target_player(player_detections, frame_center)
+
+            if shirt_number > 0 and config.CV_ENABLE_OCR:
+                from ocr import find_best_player_by_shirt
+
+                target = find_best_player_by_shirt(player_detections, frame, shirt_number)
+            else:
+                target = select_target_player(player_detections, frame_center)
 
             keypoints = None
             joint_angles = None
@@ -149,7 +174,7 @@ def run_pipeline(
     output_dir = config.CV_HEATMAP_OUTPUT_DIR
     bucket = config.CV_S3_BUCKET
 
-    heatmaps = generate_all_heatmaps(history, match_id, output_dir, bucket)
+    heatmaps = generate_all_heatmaps(history, match_id, output_dir, bucket, homography=homography)
 
     tracking_url = upload_tracking_data(history, match_id, bucket) if history else ""
 
