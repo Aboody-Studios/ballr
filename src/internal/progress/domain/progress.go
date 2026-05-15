@@ -1,8 +1,9 @@
 package domain
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Progress is the aggregate root for the Progress bounded context.
@@ -105,7 +106,7 @@ func NewProgress(id, userID string) *Progress {
 		UserID:        userID,
 		TotalPoints:   0,
 		CurrentStreak: 0,
-		LastActive:    now,
+		LastActive:    time.Time{},
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -212,13 +213,13 @@ func (p *Progress) GetLevel() int {
 		level++
 		pointsNeeded = int64(level * level * 100)
 	}
-	return level - 1
+	return level
 }
 
 // ProgressToNextLevel returns points needed to reach the next level.
 func (p *Progress) ProgressToNextLevel() int64 {
 	currentLevel := p.GetLevel()
-	nextLevelPoints := int64((currentLevel + 1) * (currentLevel + 1) * 100)
+	nextLevelPoints := int64(currentLevel * currentLevel * 100)
 	return nextLevelPoints - p.TotalPoints
 }
 
@@ -306,8 +307,6 @@ func (a *Achievement) PointValue() int64 {
 	return int64(a.PointsValue)
 }
 
-// generateID creates a simple ID for development.
-// TODO: Use github.com/google/uuid.
 func generateID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	return uuid.New().String()
 }

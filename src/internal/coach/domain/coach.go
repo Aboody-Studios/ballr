@@ -2,7 +2,11 @@ package domain
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Conversation represents an AI coaching session with message history.
@@ -203,17 +207,28 @@ func (c *Conversation) IsExpired() bool {
 }
 
 // ToPromptContext serializes the conversation and context for LLM consumption.
-// This formats the RAG context and recent messages into a prompt-ready string.
 func (c *Conversation) ToPromptContext() string {
-	// Implementation would format context for the specific LLM
-	// Includes: user profile summary, recent analysis, training history,
-	// and the last N messages from this conversation.
-	return ""
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Player: Age %d, Position %s, %s-footed\n", c.Context.UserProfile.Age, c.Context.UserProfile.Position, c.Context.UserProfile.Footedness))
+	b.WriteString(fmt.Sprintf("Goals: %s\n", c.Context.UserProfile.Goals))
+	if c.Context.RecentAnalysis != nil {
+		b.WriteString(fmt.Sprintf("Last Match: %.1fkm covered, %.1fkm/h top speed, %.0f%% pass accuracy\n",
+			c.Context.RecentAnalysis.TotalDistance, c.Context.RecentAnalysis.TopSpeed, c.Context.RecentAnalysis.PassAccuracy*100))
+	}
+	b.WriteString(fmt.Sprintf("Training streak: %d days\n", c.Context.TrainingHistory.CurrentStreak))
+	b.WriteString("\nRecent messages:\n")
+	start := 0
+	if len(c.Messages) > 10 {
+		start = len(c.Messages) - 10
+	}
+	for _, msg := range c.Messages[start:] {
+		b.WriteString(fmt.Sprintf("[%s] %s: %s\n", msg.Timestamp.Format("15:04"), msg.Role, msg.Content))
+	}
+	return b.String()
 }
 
-// TODO: Use github.com/google/uuid or similar for production.
 func generateID() string {
-	return "stub-id"
+	return uuid.New().String()
 }
 
 type TrainingLoad struct {
@@ -240,6 +255,7 @@ type MatchInsight struct {
 type ConversationRepository interface {
 	GetConversation(ctx context.Context, userID, sessionID string) (*Conversation, error)
 	SaveConversation(ctx context.Context, conversation *Conversation) error
+	FindByUserID(ctx context.Context, userID string, limit, offset int) ([]*Conversation, error)
 }
 
 type CoachContext = Context

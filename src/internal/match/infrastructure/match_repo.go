@@ -13,8 +13,9 @@ type PostgresMatchRepository struct {
 }
 
 func (r *PostgresMatchRepository) Save(ctx context.Context, match *domain.Match) error {
-	videoID := uuid.New()
-	match.ID = videoID.String()
+	if match.ID == "" {
+		match.ID = uuid.New().String()
+	}
 	tx := r.DB.Save(match)
 	return tx.Error
 }

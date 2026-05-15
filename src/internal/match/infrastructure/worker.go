@@ -7,20 +7,27 @@ import (
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
 type Worker struct {
-	matchRepo    domain.MatchRepository
-	analysisRepo domain.AnalysisRepository
-	jobQueue     domain.JobQueue
+	matchRepo      domain.MatchRepository
+	analysisRepo   domain.AnalysisRepository
+	jobQueue       domain.JobQueue
+	eventPublisher events.Publisher
 }
 
 func NewWorker(matchRepo domain.MatchRepository, analysisRepo domain.AnalysisRepository, jobQueue domain.JobQueue) *Worker {
 	return &Worker{
-		matchRepo:    matchRepo,
-		analysisRepo: analysisRepo,
-		jobQueue:     jobQueue,
+		matchRepo:      matchRepo,
+		analysisRepo:   analysisRepo,
+		jobQueue:       jobQueue,
+		eventPublisher: events.NoopPublisher(),
 	}
+}
+
+func (w *Worker) SetEventPublisher(p events.Publisher) {
+	w.eventPublisher = p
 }
 
 func (w *Worker) Start(ctx context.Context) {
@@ -40,24 +47,30 @@ func (w *Worker) run(ctx context.Context) {
 				}
 				continue
 			}
-			w.processJob(job)
+			w.processJob(ctx, job)
 		}
 	}
 }
 
-func (w *Worker) processJob(job *domain.AnalysisJob) {
+func (w *Worker) processJob(ctx context.Context, job *domain.AnalysisJob) {
 	sleepDuration := time.Duration(2+rand.Intn(3)) * time.Second
-	time.Sleep(sleepDuration)
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(sleepDuration):
+	}
 
 	result := mockAnalysis(job.MatchID, job.UserID)
 
-	if err := w.analysisRepo.Save(context.Background(), result); err != nil {
+	if err := w.analysisRepo.Save(ctx, result); err != nil {
 		return
 	}
 
-	if err := w.matchRepo.UpdateStatus(context.Background(), job.MatchID, domain.MatchStatusCompleted); err != nil {
+	if err := w.matchRepo.UpdateStatus(ctx, job.MatchID, domain.MatchStatusCompleted); err != nil {
 		return
 	}
+
+	w.eventPublisher.PublishEvent(ctx, job.UserID, "ANALYSIS_COMPLETED", nil)
 }
 
 func mockAnalysis(matchID, userID string) *domain.AnalysisResult {

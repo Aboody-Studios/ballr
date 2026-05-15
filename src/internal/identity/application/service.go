@@ -13,7 +13,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
-	"gorm.io/gorm"
 )
 
 var (
@@ -50,10 +49,9 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 		return nil, fmt.Errorf("unverified email")
 	}
 
-	//TODO!: Remove gorm. Create service layer error. This is tight coupling.
 	dbUser, findErr := s.UserRepo.FindByEmail(ctx, googleUser.Email)
 	if findErr != nil {
-		if !errors.Is(findErr, gorm.ErrRecordNotFound) {
+		if !errors.Is(findErr, domain.ErrUserNotFound) {
 			return nil, findErr
 		}
 

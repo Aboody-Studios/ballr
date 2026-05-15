@@ -6,17 +6,19 @@ import (
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/coach/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
+	"github.com/google/uuid"
 )
 
 // Service is the main application service for the Coach bounded context.
 // It coordinates AI-driven coaching interactions including chat, training plans,
 // and diet recommendations using LLM integration with RAG.
-// testosterone???
 type Service struct {
 	llmProvider     LLMProvider
 	analysisService AnalysisService
 	userService     UserService
 	historyRepo     domain.ConversationRepository
+	eventPublisher  events.Publisher
 }
 
 // LLMProvider defines the interface for AI model interactions.
@@ -49,7 +51,12 @@ func NewService(
 		analysisService: analysisService,
 		userService:     userService,
 		historyRepo:     historyRepo,
+		eventPublisher:  events.NoopPublisher(),
 	}
+}
+
+func (s *Service) SetEventPublisher(p events.Publisher) {
+	s.eventPublisher = p
 }
 
 // Chat handles a single message in an AI coach conversation using RAG pattern.
@@ -84,6 +91,10 @@ func (s *Service) Chat(ctx context.Context, userID, sessionID, message string) (
 
 	if err := s.historyRepo.SaveConversation(ctx, conversation); err != nil {
 		fmt.Printf("failed to save conversation history: %v\n", err)
+	}
+
+	if err := s.eventPublisher.PublishEvent(ctx, userID, "COACH_INTERACTION", nil); err != nil {
+		fmt.Printf("failed to publish coach interaction event: %v\n", err)
 	}
 
 	return &assistantMsg, nil
@@ -168,6 +179,10 @@ func (s *Service) buildCoachContext(ctx context.Context, userID string) (*domain
 	}, nil
 }
 
+func (s *Service) GetHistory(ctx context.Context, userID string, limit, offset int) ([]*domain.Conversation, error) {
+	return s.historyRepo.FindByUserID(ctx, userID, limit, offset)
+}
+
 func (s *Service) calculateTrainingLoad(ctx context.Context, userID string) (*domain.TrainingLoad, error) {
 	history, err := s.analysisService.GetMatchHistory(ctx, userID, 7)
 	if err != nil {
@@ -193,5 +208,5 @@ func (s *Service) calculateTrainingLoad(ctx context.Context, userID string) (*do
 }
 
 func generateID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	return uuid.New().String()
 }
