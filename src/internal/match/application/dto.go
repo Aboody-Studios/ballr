@@ -2,21 +2,20 @@ package application
 
 import "time"
 
-// S3 success request struct
-type Key struct {
+type S3Object struct {
 	Key string `json:"key"`
 }
 
-type ObjectObject struct {
-	Object Key `json:"object"`
+type S3Entity struct {
+	Object S3Object `json:"object"`
 }
 
-type S3Field struct {
-	S3Field ObjectObject `json:"s3"`
+type S3Record struct {
+	S3 S3Entity `json:"s3"`
 }
 
 type S3Success struct {
-	Records S3Field `json:"Records"`
+	Records []S3Record `json:"Records"`
 }
 
 type MatchStatus string

@@ -8,9 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// StorageRepository implements the domain.StorageRepository interface using AWS S3 or maybe we use coolify s3 bucket.
-// This is part of the infrastructure layer - it knows about AWS SDK details,
-// while the domain only knows about the storage abstraction.
+// StorageRepository implements the domain.StorageRepository interface using AWS S3.
 type StorageRepository struct {
 	s3Client *s3.Client
 	bucket   string
@@ -42,10 +40,29 @@ func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, match
 }
 
 func (r *StorageRepository) GetDownloadURL(ctx context.Context, videoID string) (string, error) {
-	return "", nil
+	key := fmt.Sprintf("users/videos/%s", videoID)
+	presignClient := s3.NewPresignClient(r.s3Client)
+
+	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: &r.bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to generate download URL: %w", err)
+	}
+
+	return request.URL, nil
 }
 
 func (r *StorageRepository) DeleteVideo(ctx context.Context, videoID string) error {
-	// TODO!: Implement S3 deletion when account available
+	key := fmt.Sprintf("users/videos/%s", videoID)
+	_, err := r.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: &r.bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete video: %w", err)
+	}
+
 	return nil
 }

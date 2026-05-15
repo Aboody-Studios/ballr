@@ -12,6 +12,14 @@ import (
 // This includes video upload, match processing status, and analysis results.
 type AnalysisHandler struct {
 	analysisService *application.AnalysisService
+	uploadService   *application.UploadService
+}
+
+func NewAnalysisHandlerWithUpload(analysisSvc *application.AnalysisService, uploadSvc *application.UploadService) *AnalysisHandler {
+	return &AnalysisHandler{
+		analysisService: analysisSvc,
+		uploadService:   uploadSvc,
+	}
 }
 
 type UploadHandler struct {
@@ -125,13 +133,26 @@ func (analysisHandler *AnalysisHandler) StartAnalysisHandler(c *echo.Context) er
 }
 
 func (ah *AnalysisHandler) SuccessfulVideoUploadHandler(echoCtx *echo.Context) error {
-	var s3Success application.S3Success
-	if err := echoCtx.Bind(&s3Success); err != nil {
-		return err
+	if ah.uploadService == nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "upload service not configured"})
 	}
 
-	//ctx := echoCtx.Request().Context()
-	//TODO!: Persist success to db uploading column
+	var s3Success application.S3Success
+	if err := echoCtx.Bind(&s3Success); err != nil {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
 
-	return nil
+	var s3Key string
+	if len(s3Success.Records) > 0 {
+		s3Key = s3Success.Records[0].S3.Object.Key
+	}
+	if s3Key == "" {
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Missing S3 object key"})
+	}
+
+	if err := ah.uploadService.ConfirmUploadByS3Key(echoCtx.Request().Context(), s3Key); err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to confirm upload"})
+	}
+
+	return echoCtx.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }

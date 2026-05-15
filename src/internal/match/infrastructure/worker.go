@@ -73,6 +73,16 @@ func (w *Worker) processJob(ctx context.Context, job *domain.AnalysisJob) {
 	w.eventPublisher.PublishEvent(ctx, job.UserID, "ANALYSIS_COMPLETED", nil)
 }
 
+// TODO: Replace mock analysis with real CV pipeline.
+// Required steps:
+//  1. Download video from S3 using matchID to construct the key: users/{userID}/videos/{matchID}
+//  2. Initialize CV model (YOLOv26/MediaPipe) - model selection should be configurable
+//  3. Run inference: extract player positions, ball trajectory, match events
+//  4. Compute summary statistics: distance, speed, pass accuracy, etc.
+//  5. Generate heatmap images and upload to S3
+//  6. Store structured analysis result via analysisRepo.Save()
+//  7. The mock URL patterns are: https://storage.example.com/heatmaps/{matchID}/*.png
+//     Replace with real S3 presigned URLs from the storage repository.
 func mockAnalysis(matchID, userID string) *domain.AnalysisResult {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &domain.AnalysisResult{

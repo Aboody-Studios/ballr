@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"fmt"
 	"os"
 
 	"gorm.io/driver/postgres"
@@ -10,7 +11,7 @@ import (
 func InitiatePostgres() (*gorm.DB, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "host=localhost user=myuser password=mypassword dbname=mydb port=5432 sslmode=disable"
+		return nil, fmt.Errorf("DATABASE_URL environment variable is not set")
 	}
 	dialector := postgres.Open(dsn)
 	gormdb, err := gorm.Open(dialector)

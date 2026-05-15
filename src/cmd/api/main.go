@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	progressinfrastructure "github.com/Aboody-Studios/ballr/src/internal/progress/infrastructure"
 	shareddelivery "github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -37,10 +39,14 @@ func main() {
 	godotenv.Load()
 
 	secretKey := os.Getenv("JWT_SECRET")
+	if secretKey == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
+
 	rdb := infrastructure.InitiateRedis()
 	db, dbErr := infrastructure.InitiatePostgres()
 	if dbErr != nil {
-		log.Fatal("database connection error")
+		log.Fatalf("database connection error: %v", dbErr)
 	}
 
 	if err := infrastructure.RunMigrations(db); err != nil {
@@ -68,7 +74,7 @@ func main() {
 	analysisRepo := &analysisinfrastructure.PostgresAnalysisRepository{DB: db}
 	jobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
 	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
-	analysisHandler := matchhandlers.NewAnalysisHandler(analysisService)
+	analysisHandler := matchhandlers.NewAnalysisHandlerWithUpload(analysisService, uploadService)
 	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue)
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	analysisWorker.Start(workerCtx)
@@ -93,19 +99,44 @@ func main() {
 	progressHandler := progresshttp.NewProgressHandler(gamificationService)
 
 	// --- Event Wiring ---
-	eventPublisher := &gamificationAdapter{svc: gamificationService}
+	eventPublisher := events.NewRedisPublisher(rdb)
 	uploadService.SetEventPublisher(eventPublisher)
 	analysisService.SetEventPublisher(eventPublisher)
 	analysisWorker.SetEventPublisher(eventPublisher)
 	coachService.SetEventPublisher(eventPublisher)
+
+	eventConsumer := events.NewConsumer(rdb, events.DefaultStream, events.DefaultGroup, "api-server")
+	eventConsumer.HandleFunc(events.EventMatchUploaded, func(ctx context.Context, e events.Event) error {
+		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
+	})
+	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, e events.Event) error {
+		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
+	})
+	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, e events.Event) error {
+		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
+	})
+	consumerCtx, stopConsumer := context.WithCancel(context.Background())
+	go func() {
+		if err := eventConsumer.Start(consumerCtx); err != nil && err != context.Canceled {
+			log.Printf("event consumer error: %v", err)
+		}
+	}()
 
 	// --- Server ---
 	echoServer := echo.New()
 	echoServer.Validator = validator.New()
 	echoServer.Use(echomw.RequestLogger())
 	echoServer.Use(echomw.Recover())
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	var allowedOrigins []string
+	if corsOrigins == "" || corsOrigins == "*" {
+		allowedOrigins = []string{"*"}
+		log.Println("WARNING: CORS allows all origins. Set CORS_ORIGINS env var in production.")
+	} else {
+		allowedOrigins = strings.Split(corsOrigins, ",")
+	}
 	echoServer.Use(echomw.CORSWithConfig(echomw.CORSConfig{
-		AllowOrigins: []string{"*"},
+		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{"Authorization", "Content-Type"},
 	}))
@@ -122,6 +153,7 @@ func main() {
 	secureGroup.GET("/analysis/status/:id", analysisHandler.GetAnalysisStatusHandler)
 	secureGroup.GET("/analysis/report/:id", analysisHandler.GetAnalysisReportHandler)
 	secureGroup.POST("/analysis/start", analysisHandler.StartAnalysisHandler)
+	secureGroup.POST("/analysis/upload-success", analysisHandler.SuccessfulVideoUploadHandler)
 
 	secureGroup.POST("/coach/chat", coachHandler.ChatHandler)
 	secureGroup.POST("/coach/plan/generate", coachHandler.GeneratePlanHandler)
@@ -142,14 +174,25 @@ func main() {
 		port = ":3000"
 	}
 
+	certFile := os.Getenv("TLS_CERT_FILE")
+	keyFile := os.Getenv("TLS_KEY_FILE")
+
 	s := &http.Server{
 		Addr:    port,
 		Handler: echoServer,
 	}
 
 	go func() {
-		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("server error: %v", err)
+		var serveErr error
+		if certFile != "" && keyFile != "" {
+			log.Printf("starting HTTPS server on %s", port)
+			serveErr = s.ListenAndServeTLS(certFile, keyFile)
+		} else {
+			log.Printf("starting HTTP server on %s (set TLS_CERT_FILE and TLS_KEY_FILE for HTTPS)", port)
+			serveErr = s.ListenAndServe()
+		}
+		if serveErr != nil && serveErr != http.ErrServerClosed {
+			log.Printf("server error: %v", serveErr)
 		}
 	}()
 
@@ -159,6 +202,7 @@ func main() {
 
 	log.Println("shutting down server...")
 
+	stopConsumer()
 	stopWorker()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -180,10 +224,4 @@ func main() {
 	log.Println("server stopped")
 }
 
-type gamificationAdapter struct {
-	svc *progressapplication.GamificationService
-}
 
-func (a *gamificationAdapter) PublishEvent(ctx context.Context, userID string, eventType string, metadata map[string]interface{}) error {
-	return a.svc.ProcessEvent(ctx, userID, progressdomain.EventType(eventType), progressdomain.EventMetadata(metadata))
-}

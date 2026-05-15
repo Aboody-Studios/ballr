@@ -84,6 +84,56 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 	return uploadURL, nil
 }
 
+// ConfirmUploadByS3Key updates match status to PROCESSING after S3 confirms upload.
+// The s3Key format is: users/{userID}/videos/{matchID}
+func (s *UploadService) ConfirmUploadByS3Key(ctx context.Context, s3Key string) error {
+	matchID, err := parseMatchIDFromS3Key(s3Key)
+	if err != nil {
+		return fmt.Errorf("parse s3 key: %w", err)
+	}
+
+	match, err := s.matchRepo.FindByID(ctx, matchID)
+	if err != nil {
+		return fmt.Errorf("match not found: %w", err)
+	}
+
+	if match.Status != domain.MatchStatusUploading {
+		return nil
+	}
+
+	match.Status = domain.MatchStatusProcessing
+	if err := s.matchRepo.Save(ctx, match); err != nil {
+		return fmt.Errorf("save match: %w", err)
+	}
+
+	return nil
+}
+
+func parseMatchIDFromS3Key(key string) (string, error) {
+	parts := splitPath(key)
+	if len(parts) < 4 || parts[0] != "users" || parts[2] != "videos" {
+		return "", fmt.Errorf("unexpected s3 key format: %s", key)
+	}
+	return parts[3], nil
+}
+
+func splitPath(path string) []string {
+	var parts []string
+	start := 0
+	for i := 0; i < len(path); i++ {
+		if path[i] == '/' {
+			if i > start {
+				parts = append(parts, path[start:i])
+			}
+			start = i + 1
+		}
+	}
+	if start < len(path) {
+		parts = append(parts, path[start:])
+	}
+	return parts
+}
+
 // GenerateUploadURL handles the upload URL generation use case.
 func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest *MatchRequest, userID string) (string, error) {
 	return s.RequestUploadURL(ctx, matchRequest, userID)
