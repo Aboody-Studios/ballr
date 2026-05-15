@@ -1,0 +1,16 @@
+import os
+
+CV_FPS_TARGET = int(os.getenv("CV_FPS_TARGET", "10"))
+CV_DETECTION_CONF = float(os.getenv("CV_DETECTION_CONF", "0.5"))
+CV_POSE_CONF = float(os.getenv("CV_POSE_CONF", "0.5"))
+CV_MODEL_DETECTION = os.getenv("CV_MODEL_DETECTION", "Adit-jain/soccana")
+CV_MODEL_BALL = os.getenv("CV_MODEL_BALL", "martinjolif/yolo-football-ball-detection")
+CV_MODEL_POSE = os.getenv("CV_MODEL_POSE", "openvision/yolo26m-pose")
+CV_S3_BUCKET = os.getenv("CV_S3_BUCKET", "")
+CV_S3_REGION = os.getenv("CV_S3_REGION", "us-east-1")
+CV_HEATMAP_OUTPUT_DIR = os.getenv("CV_HEATMAP_OUTPUT_DIR", "/tmp/ballr-heatmaps")
+CV_KALMAN_PROCESS_NOISE = float(os.getenv("CV_KALMAN_PROCESS_NOISE", "1e-4"))
+CV_KALMAN_MEASUREMENT_NOISE = float(os.getenv("CV_KALMAN_MEASUREMENT_NOISE", "1e-2"))
+CV_PX_PER_METER = float(os.getenv("CV_PX_PER_METER", "15.0"))
+CV_HEATMAP_WIDTH = int(os.getenv("CV_HEATMAP_WIDTH", "1050"))
+CV_HEATMAP_HEIGHT = int(os.getenv("CV_HEATMAP_HEIGHT", "680"))

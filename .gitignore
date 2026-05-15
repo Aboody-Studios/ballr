@@ -1,3 +1,4 @@
 .env
 /api
 coverage.out
+src/cv/__pycache__/
