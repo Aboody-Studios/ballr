@@ -106,7 +106,7 @@ func NewProgress(id, userID string) *Progress {
 		UserID:        userID,
 		TotalPoints:   0,
 		CurrentStreak: 0,
-		LastActive:    now,
+		LastActive:    time.Time{},
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -213,13 +213,13 @@ func (p *Progress) GetLevel() int {
 		level++
 		pointsNeeded = int64(level * level * 100)
 	}
-	return level - 1
+	return level
 }
 
 // ProgressToNextLevel returns points needed to reach the next level.
 func (p *Progress) ProgressToNextLevel() int64 {
 	currentLevel := p.GetLevel()
-	nextLevelPoints := int64((currentLevel + 1) * (currentLevel + 1) * 100)
+	nextLevelPoints := int64(currentLevel * currentLevel * 100)
 	return nextLevelPoints - p.TotalPoints
 }
 
