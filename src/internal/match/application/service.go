@@ -5,32 +5,45 @@ import (
 	"fmt"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
 type UploadService struct {
 	storageProvider StorageProvider
 	matchRepo       domain.MatchRepository
+	eventPublisher  events.Publisher
 }
 
 type AnalysisService struct {
-	matchRepo    domain.MatchRepository
-	analysisRepo domain.AnalysisRepository
-	jobQueue     domain.JobQueue
+	matchRepo       domain.MatchRepository
+	analysisRepo    domain.AnalysisRepository
+	jobQueue        domain.JobQueue
+	eventPublisher  events.Publisher
 }
 
 func NewUploadService(provider StorageProvider, repo domain.MatchRepository) *UploadService {
 	return &UploadService{
 		storageProvider: provider,
 		matchRepo:       repo,
+		eventPublisher:  events.NoopPublisher(),
 	}
 }
 
 func NewAnalysisService(analysisRepo domain.AnalysisRepository, matchRepo domain.MatchRepository, queue domain.JobQueue) *AnalysisService {
 	return &AnalysisService{
-		analysisRepo: analysisRepo,
-		matchRepo:    matchRepo,
-		jobQueue:     queue,
+		analysisRepo:   analysisRepo,
+		matchRepo:      matchRepo,
+		jobQueue:       queue,
+		eventPublisher: events.NoopPublisher(),
 	}
+}
+
+func (s *UploadService) SetEventPublisher(p events.Publisher) {
+	s.eventPublisher = p
+}
+
+func (s *AnalysisService) SetEventPublisher(p events.Publisher) {
+	s.eventPublisher = p
 }
 
 // Business Rules Validated:
@@ -47,7 +60,7 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 		UserID:         userID,
 		ShirtNumber:    matchRequest.ShirtNumber,
 		PositionPlayed: matchRequest.Position,
-		Status:         domain.MatchStatusProcessing,
+		Status:         domain.MatchStatusUploading,
 		Metadata:       domain.MatchMetadata(matchRequest.Metadata),
 	}
 	// Saving to database first before generating upload url is essential because
@@ -62,6 +75,10 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, userID, match.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate upload url: %w", err)
+	}
+
+	if err := s.eventPublisher.PublishEvent(ctx, userID, "MATCH_UPLOADED", nil); err != nil {
+		return "", fmt.Errorf("failed to publish event: %w", err)
 	}
 
 	return uploadURL, nil
@@ -102,11 +119,13 @@ func (s *AnalysisService) GetAnalysisReport(ctx context.Context, matchID string)
 
 // StartAnalysis initiates the CV analysis pipeline after video upload.
 func (s *AnalysisService) StartAnalysis(ctx context.Context, matchID string, userID string, shirtNumber int, position, videoURL string) error {
-	metadata := domain.MatchMetadata{}
-
-	match, err := domain.NewMatch(matchID, userID, shirtNumber, position, metadata)
+	match, err := s.matchRepo.FindByID(ctx, matchID)
 	if err != nil {
-		return err
+		return fmt.Errorf("match not found: %w", err)
+	}
+
+	if match.UserID != userID {
+		return fmt.Errorf("match does not belong to user")
 	}
 
 	if err := match.MarkUploadComplete(videoURL); err != nil {

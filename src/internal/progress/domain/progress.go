@@ -1,8 +1,9 @@
 package domain
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Progress is the aggregate root for the Progress bounded context.
@@ -306,8 +307,6 @@ func (a *Achievement) PointValue() int64 {
 	return int64(a.PointsValue)
 }
 
-// generateID creates a simple ID for development.
-// TODO: Use github.com/google/uuid.
 func generateID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	return uuid.New().String()
 }

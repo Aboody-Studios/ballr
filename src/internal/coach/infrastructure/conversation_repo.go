@@ -29,3 +29,20 @@ func (r *PostgresConversationRepository) SaveConversation(ctx context.Context, c
 	tx := r.DB.Save(conversation)
 	return tx.Error
 }
+
+func (r *PostgresConversationRepository) FindByUserID(ctx context.Context, userID string, limit, offset int) ([]*coachdomain.Conversation, error) {
+	var conversations []coachdomain.Conversation
+	tx := r.DB.Where("user_id = ?", userID).
+		Order("updated_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&conversations)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	result := make([]*coachdomain.Conversation, len(conversations))
+	for i := range conversations {
+		result[i] = &conversations[i]
+	}
+	return result, nil
+}

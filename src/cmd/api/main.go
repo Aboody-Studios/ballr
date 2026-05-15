@@ -19,6 +19,7 @@ import (
 	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
+	progressdomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	progresshttp "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/http"
 	progressinfrastructure "github.com/Aboody-Studios/ballr/src/internal/progress/infrastructure"
 	shareddelivery "github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
@@ -69,7 +70,8 @@ func main() {
 	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
 	analysisHandler := matchhandlers.NewAnalysisHandler(analysisService)
 	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue)
-	analysisWorker.Start(context.Background())
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+	analysisWorker.Start(workerCtx)
 
 	// --- Coach ---
 	llmProvider, err := coachinfrastructure.NewLLMProvider()
@@ -90,10 +92,18 @@ func main() {
 	gamificationService := progressapplication.NewGamificationService(progressRepo, achievementRepo, eventLogRepo, leaderboardRepo)
 	progressHandler := progresshttp.NewProgressHandler(gamificationService)
 
+	// --- Event Wiring ---
+	eventPublisher := &gamificationAdapter{svc: gamificationService}
+	uploadService.SetEventPublisher(eventPublisher)
+	analysisService.SetEventPublisher(eventPublisher)
+	analysisWorker.SetEventPublisher(eventPublisher)
+	coachService.SetEventPublisher(eventPublisher)
+
 	// --- Server ---
 	echoServer := echo.New()
 	echoServer.Validator = validator.New()
 	echoServer.Use(echomw.RequestLogger())
+	echoServer.Use(echomw.Recover())
 	echoServer.Use(echomw.CORSWithConfig(echomw.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -149,6 +159,8 @@ func main() {
 
 	log.Println("shutting down server...")
 
+	stopWorker()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -166,4 +178,12 @@ func main() {
 	}
 
 	log.Println("server stopped")
+}
+
+type gamificationAdapter struct {
+	svc *progressapplication.GamificationService
+}
+
+func (a *gamificationAdapter) PublishEvent(ctx context.Context, userID string, eventType string, metadata map[string]interface{}) error {
+	return a.svc.ProcessEvent(ctx, userID, progressdomain.EventType(eventType), progressdomain.EventMetadata(metadata))
 }

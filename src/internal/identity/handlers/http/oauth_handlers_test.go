@@ -18,7 +18,6 @@ import (
 	"github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	"github.com/labstack/echo/v5"
 	"golang.org/x/oauth2"
-	"gorm.io/gorm"
 )
 
 type inMemoryUserRepo struct {
@@ -42,7 +41,7 @@ func (r *inMemoryUserRepo) FindByEmail(ctx context.Context, email string) (*doma
 	defer r.mu.Unlock()
 	u, ok := r.users[email]
 	if !ok {
-		return nil, gorm.ErrRecordNotFound
+		return nil, domain.ErrUserNotFound
 	}
 	return u, nil
 }
@@ -55,7 +54,7 @@ func (r *inMemoryUserRepo) FindByID(ctx context.Context, id string) (*domain.Use
 			return u, nil
 		}
 	}
-	return nil, gorm.ErrRecordNotFound
+	return nil, domain.ErrUserNotFound
 }
 
 func (r *inMemoryUserRepo) Update(ctx context.Context, user *domain.User) error {

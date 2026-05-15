@@ -97,11 +97,21 @@ func (h *CoachHandler) GenerateDietHandler(echoCtx *echo.Context) error {
 // GetHistoryHandler retrieves the conversation history for the authenticated user.
 // Endpoint: GET /coach/history
 func (h *CoachHandler) GetHistoryHandler(c *echo.Context) error {
-	// TODO!: Implement conversation history retrieval
-	// This requires a CoachHistoryRepository in the infrastructure layer
+	claims, err := delivery.ExtractToken(c)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	limit := 20
+	offset := 0
+
+	conversations, err := h.coachService.GetHistory(c.Request().Context(), claims.ID, limit, offset)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve history"})
+	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"conversations": []interface{}{},
-		"total":         0,
+		"conversations": conversations,
+		"total":         len(conversations),
 	})
 }

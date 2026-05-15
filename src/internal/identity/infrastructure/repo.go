@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"gorm.io/gorm"
@@ -15,6 +16,9 @@ func (postDB *PostgresUserRepo) FindByEmail(ctx context.Context, email string) (
 	user, err := gorm.G[domain.User](postDB.DB).Where("email = ?", email).First(ctx)
 
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, err
 	}
 
@@ -25,6 +29,9 @@ func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domai
 	user, err := gorm.G[domain.User](postDB.DB).Where("id = ?", id).First(ctx)
 
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, err
 	}
 
