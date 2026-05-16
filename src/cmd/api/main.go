@@ -1,4 +1,4 @@
-package main
+	package main
 
 import (
 	"context"
@@ -74,7 +74,7 @@ func main() {
 	analysisRepo := &analysisinfrastructure.PostgresAnalysisRepository{DB: db}
 	jobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
 	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
-	analysisHandler := matchhandlers.NewAnalysisHandlerWithUpload(analysisService, uploadService)
+	analysisHandler := matchhandlers.NewAnalysisHandler(analysisService)
 	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	analysisWorker.Start(workerCtx)
@@ -149,11 +149,11 @@ func main() {
 	secureGroup.GET("/auth/me", identityHandler.GetProfileHandler)
 	secureGroup.PUT("/auth/profile", identityHandler.CompleteProfileHandler)
 
-	secureGroup.POST("/analysis/upload-url", uploadHandler.UploadURLHandler)
-	secureGroup.GET("/analysis/status/:id", analysisHandler.GetAnalysisStatusHandler)
-	secureGroup.GET("/analysis/report/:id", analysisHandler.GetAnalysisReportHandler)
-	secureGroup.POST("/analysis/start", analysisHandler.StartAnalysisHandler)
-	secureGroup.POST("/analysis/upload-success", analysisHandler.SuccessfulVideoUploadHandler)
+	secureGroup.POST("/match/upload-url", uploadHandler.UploadURLHandler)
+	secureGroup.GET("/match/analysis-status/:id", analysisHandler.GetAnalysisStatusHandler)
+	secureGroup.GET("/match/analysis-report/:id", analysisHandler.GetAnalysisReportHandler)
+	secureGroup.POST("/match/analysis-start", analysisHandler.StartAnalysisHandler)
+	secureGroup.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)
 
 	secureGroup.POST("/coach/chat", coachHandler.ChatHandler)
 	secureGroup.POST("/coach/plan/generate", coachHandler.GeneratePlanHandler)

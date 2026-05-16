@@ -32,14 +32,14 @@ func NewConsumer(rdb *redis.Client, stream, group, consumer string) *Consumer {
 	}
 }
 
-func (c *Consumer) Handle(eventType string, handler Handler) {
+func (c *Consumer) handle(eventType string, handler Handler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers[eventType] = append(c.handlers[eventType], handler)
 }
 
 func (c *Consumer) HandleFunc(eventType string, fn func(ctx context.Context, event Event) error) {
-	c.Handle(eventType, HandlerFunc(fn))
+	c.handle(eventType, HandlerFunc(fn))
 }
 
 func (c *Consumer) Start(ctx context.Context) error {

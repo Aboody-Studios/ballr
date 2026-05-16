@@ -39,7 +39,7 @@ func (p *RedisPublisher) PublishEvent(ctx context.Context, userID string, eventT
 	return p.rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: p.stream,
 		ID:     "*",
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"data": string(data),
 		},
 	}).Err()

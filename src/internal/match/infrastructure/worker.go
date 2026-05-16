@@ -84,7 +84,7 @@ func (w *Worker) processJob(ctx context.Context, job *domain.AnalysisJob) {
 	log := slog.With("match_id", job.MatchID, "user_id", job.UserID)
 
 	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		if attempt > 0 {
 			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
 			log.Info("retrying analysis", "attempt", attempt+1, "delay", delay)

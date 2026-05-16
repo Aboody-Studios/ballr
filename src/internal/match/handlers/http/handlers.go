@@ -12,14 +12,6 @@ import (
 // This includes video upload, match processing status, and analysis results.
 type AnalysisHandler struct {
 	analysisService *application.AnalysisService
-	uploadService   *application.UploadService
-}
-
-func NewAnalysisHandlerWithUpload(analysisSvc *application.AnalysisService, uploadSvc *application.UploadService) *AnalysisHandler {
-	return &AnalysisHandler{
-		analysisService: analysisSvc,
-		uploadService:   uploadSvc,
-	}
 }
 
 type UploadHandler struct {
@@ -132,8 +124,8 @@ func (analysisHandler *AnalysisHandler) StartAnalysisHandler(c *echo.Context) er
 	})
 }
 
-func (ah *AnalysisHandler) SuccessfulVideoUploadHandler(echoCtx *echo.Context) error {
-	if ah.uploadService == nil {
+func (uploadHandler *UploadHandler) SuccessfulVideoUploadHandler(echoCtx *echo.Context) error {
+	if uploadHandler.uploadService == nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "upload service not configured"})
 	}
 
@@ -150,7 +142,7 @@ func (ah *AnalysisHandler) SuccessfulVideoUploadHandler(echoCtx *echo.Context) e
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Missing S3 object key"})
 	}
 
-	if err := ah.uploadService.ConfirmUploadByS3Key(echoCtx.Request().Context(), s3Key); err != nil {
+	if err := uploadHandler.uploadService.ConfirmUploadByS3Key(echoCtx.Request().Context(), s3Key); err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to confirm upload"})
 	}
 
