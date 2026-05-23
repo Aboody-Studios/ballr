@@ -78,7 +78,7 @@ func (r *mockAchRepo) HasAchievement(_ context.Context, _, _ string) (bool, erro
 
 type mockEvtRepo struct{}
 
-func (r *mockEvtRepo) Save(_ context.Context, _ *progressdomain.EventLog) error  { return nil }
+func (r *mockEvtRepo) Save(_ context.Context, _ *progressdomain.EventLog) error { return nil }
 func (r *mockEvtRepo) FindRecentByUserID(_ context.Context, _ string, _ int) ([]*progressdomain.EventLog, error) {
 	return nil, nil
 }

@@ -99,7 +99,7 @@ func (r *mockEventLogRepo) FindRecentByUserID(_ context.Context, _ string, _ int
 }
 
 type mockLeaderboardRepo struct {
-	mu   sync.Mutex
+	mu     sync.Mutex
 	scores map[string]int64
 }
 
@@ -135,11 +135,11 @@ func TestProcessEvent_NewUser(t *testing.T) {
 		t.Fatalf("progress not found: %v", err)
 	}
 	if p.TotalPoints != 150 {
-			t.Errorf("expected 150 points (50 event + 100 achievement), got %d", p.TotalPoints)
-		}
-		if p.CurrentStreak != 1 {
-			t.Errorf("expected streak 1, got %d", p.CurrentStreak)
-		}
+		t.Errorf("expected 150 points (50 event + 100 achievement), got %d", p.TotalPoints)
+	}
+	if p.CurrentStreak != 1 {
+		t.Errorf("expected streak 1, got %d", p.CurrentStreak)
+	}
 }
 
 func TestProcessEvent_ExistingUser(t *testing.T) {

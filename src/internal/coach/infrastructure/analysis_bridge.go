@@ -4,8 +4,8 @@ import (
 	"context"
 	"sort"
 
-	analysisdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	coachdomain "github.com/Aboody-Studios/ballr/src/internal/coach/domain"
+	analysisdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
 )
 
 type CoachAnalysisBridge struct {

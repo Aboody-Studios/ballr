@@ -9,10 +9,10 @@ import (
 )
 
 type mockLLMProvider struct {
-	response        string
-	trainingPlan    *domain.TrainingPlan
-	dietPlan        *domain.DietPlan
-	err             error
+	response     string
+	trainingPlan *domain.TrainingPlan
+	dietPlan     *domain.DietPlan
+	err          error
 }
 
 func (m *mockLLMProvider) GenerateResponse(_ context.Context, _ []domain.Message, _ domain.CoachContext) (string, error) {
@@ -104,7 +104,7 @@ func setupCoachService() (*Service, *mockLLMProvider, *mockConvRepo, *mockEventP
 	llm := &mockLLMProvider{
 		response: "Great pass! Try to keep your head up.",
 		trainingPlan: &domain.TrainingPlan{
-			Objective: "Improve passing accuracy",
+			Objective:  "Improve passing accuracy",
 			FocusAreas: []string{"short passing", "long passing"},
 		},
 		dietPlan: &domain.DietPlan{

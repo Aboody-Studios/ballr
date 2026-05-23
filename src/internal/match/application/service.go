@@ -15,10 +15,10 @@ type UploadService struct {
 }
 
 type AnalysisService struct {
-	matchRepo       domain.MatchRepository
-	analysisRepo    domain.AnalysisRepository
-	jobQueue        domain.JobQueue
-	eventPublisher  events.Publisher
+	matchRepo      domain.MatchRepository
+	analysisRepo   domain.AnalysisRepository
+	jobQueue       domain.JobQueue
+	eventPublisher events.Publisher
 }
 
 func NewUploadService(provider StorageProvider, repo domain.MatchRepository) *UploadService {
@@ -77,7 +77,7 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 		return "", fmt.Errorf("failed to generate upload url: %w", err)
 	}
 
-	if err := s.eventPublisher.PublishEvent(ctx, userID, "MATCH_UPLOADED", nil); err != nil {
+	if err := s.eventPublisher.PublishEvent(ctx, userID, events.EventMatchUploaded, nil); err != nil {
 		return "", fmt.Errorf("failed to publish event: %w", err)
 	}
 
@@ -86,7 +86,7 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 
 // ConfirmUploadByS3Key updates match status to PROCESSING after S3 confirms upload.
 // The s3Key format is: users/{userID}/videos/{matchID}
-func (s *UploadService) ConfirmUploadByS3Key(ctx context.Context, s3Key string) error {
+func (s *UploadService) UpdateMatchStatusToProcessing(ctx context.Context, s3Key string) error {
 	matchID, err := parseMatchIDFromS3Key(s3Key)
 	if err != nil {
 		return fmt.Errorf("parse s3 key: %w", err)
@@ -97,6 +97,9 @@ func (s *UploadService) ConfirmUploadByS3Key(ctx context.Context, s3Key string) 
 		return fmt.Errorf("match not found: %w", err)
 	}
 
+	//TODO!: Replace with MarkUploadComplete() to follow clean architecture
+	match.VideoURL = s3Key
+
 	if match.Status != domain.MatchStatusUploading {
 		return nil
 	}
@@ -104,6 +107,15 @@ func (s *UploadService) ConfirmUploadByS3Key(ctx context.Context, s3Key string) 
 	match.Status = domain.MatchStatusProcessing
 	if err := s.matchRepo.Save(ctx, match); err != nil {
 		return fmt.Errorf("save match: %w", err)
+	}
+
+	eventMap := map[string]any{
+		"match_id":  match.ID,
+		"video_url": match.VideoURL,
+	}
+
+	if err := s.eventPublisher.PublishEvent(ctx, match.UserID, events.EventAnalysisStart, eventMap); err != nil {
+		return fmt.Errorf("failed to publish event: %w", err)
 	}
 
 	return nil
@@ -168,30 +180,18 @@ func (s *AnalysisService) GetAnalysisReport(ctx context.Context, matchID string)
 }
 
 // StartAnalysis initiates the CV analysis pipeline after video upload.
-func (s *AnalysisService) StartAnalysis(ctx context.Context, matchID string, userID string, shirtNumber int, position, videoURL string) error {
+func (s *AnalysisService) StartAnalysis(ctx context.Context, matchID, videoURL string) error {
 	match, err := s.matchRepo.FindByID(ctx, matchID)
 	if err != nil {
 		return fmt.Errorf("match not found: %w", err)
 	}
 
-	if match.UserID != userID {
-		return fmt.Errorf("match does not belong to user")
-	}
-
-	if err := match.MarkUploadComplete(videoURL); err != nil {
-		return err
-	}
-
-	if err := s.matchRepo.Save(ctx, match); err != nil {
-		return err
-	}
-
 	job := &domain.AnalysisJob{
 		MatchID:     matchID,
-		UserID:      userID,
+		UserID:      match.UserID,
 		VideoURL:    videoURL,
-		ShirtNumber: shirtNumber,
-		Position:    position,
+		ShirtNumber: match.ShirtNumber,
+		Position:    match.PositionPlayed,
 	}
 	if err := s.jobQueue.Push(ctx, job); err != nil {
 		return err

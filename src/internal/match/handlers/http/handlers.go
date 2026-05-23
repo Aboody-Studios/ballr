@@ -113,7 +113,7 @@ func (analysisHandler *AnalysisHandler) StartAnalysisHandler(c *echo.Context) er
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
-	err = analysisHandler.analysisService.StartAnalysis(c.Request().Context(), req.MatchID, claims.ID, req.ShirtNumber, req.Position, req.VideoURL)
+	err = analysisHandler.analysisService.StartAnalysis(c.Request().Context(), req.ShirtNumber, req.MatchID, claims.ID, req.Position, req.VideoURL)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start analysis"})
 	}
@@ -142,7 +142,7 @@ func (uploadHandler *UploadHandler) SuccessfulVideoUploadHandler(echoCtx *echo.C
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Missing S3 object key"})
 	}
 
-	if err := uploadHandler.uploadService.ConfirmUploadByS3Key(echoCtx.Request().Context(), s3Key); err != nil {
+	if err := uploadHandler.uploadService.UpdateMatchStatusToProcessing(echoCtx.Request().Context(), s3Key); err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to confirm upload"})
 	}
 

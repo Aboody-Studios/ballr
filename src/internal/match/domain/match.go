@@ -24,6 +24,7 @@ type Match struct {
 	UserID         string          `gorm:"index;not null"`
 	ShirtNumber    int             `gorm:"not null"`
 	PositionPlayed string          `gorm:"type:varchar(20)"`
+	VideoURL       string          `gorm:"type:varchar(100)"`
 	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
 	UploadedAt     time.Time       `gorm:"autoCreateTime"`
 	Metadata       MatchMetadata   `gorm:"type:jsonb;serializer:json"`

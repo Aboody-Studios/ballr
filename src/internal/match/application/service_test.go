@@ -10,10 +10,10 @@ import (
 )
 
 type mockMatchRepo struct {
-	mu       sync.Mutex
-	matches  map[string]*domain.Match
-	saveErr  error
-	findErr  error
+	mu      sync.Mutex
+	matches map[string]*domain.Match
+	saveErr error
+	findErr error
 }
 
 func newMockMatchRepo() *mockMatchRepo {
@@ -71,8 +71,8 @@ func (r *mockMatchRepo) UpdateAnalysisID(_ context.Context, _ string, _ string) 
 }
 
 type mockAnalysisRepo struct {
-	mu         sync.Mutex
-	analyses   map[string]*domain.AnalysisResult
+	mu       sync.Mutex
+	analyses map[string]*domain.AnalysisResult
 }
 
 func newMockAnalysisRepo() *mockAnalysisRepo {

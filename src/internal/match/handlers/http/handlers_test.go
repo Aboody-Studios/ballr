@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	iddomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/Aboody-Studios/ballr/src/internal/match/application"
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
-	iddomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -79,13 +79,18 @@ func (r *mockAnaRepo) Save(_ context.Context, _ *domain.AnalysisResult) error { 
 func (r *mockAnaRepo) FindByMatchID(_ context.Context, _ string) (*domain.AnalysisResult, error) {
 	return nil, nil
 }
-func (r *mockAnaRepo) FindByID(_ context.Context, _ string) (*domain.AnalysisResult, error) { return nil, nil }
-func (r *mockAnaRepo) UpdateSummary(_ context.Context, _ string, _ domain.AnalysisSummary) error { return nil }
+func (r *mockAnaRepo) FindByID(_ context.Context, _ string) (*domain.AnalysisResult, error) {
+	return nil, nil
+}
+func (r *mockAnaRepo) UpdateSummary(_ context.Context, _ string, _ domain.AnalysisSummary) error {
+	return nil
+}
 func (r *mockAnaRepo) AddEvent(_ context.Context, _ string, _ domain.MatchEvent) error { return nil }
 
 type mockMatchQueue struct{}
+
 func (q *mockMatchQueue) Push(_ context.Context, _ *domain.AnalysisJob) error { return nil }
-func (q *mockMatchQueue) Pop(_ context.Context) (*domain.AnalysisJob, error) { return nil, nil }
+func (q *mockMatchQueue) Pop(_ context.Context) (*domain.AnalysisJob, error)  { return nil, nil }
 
 type mockEventPub struct{}
 

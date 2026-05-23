@@ -1,7 +1,8 @@
-	package main
+package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,15 +11,15 @@ import (
 	"syscall"
 	"time"
 
-	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/match/application"
-	matchhandlers "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
-	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
 	coachhttp "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
 	coachinfrastructure "github.com/Aboody-Studios/ballr/src/internal/coach/infrastructure"
 	identityapplication "github.com/Aboody-Studios/ballr/src/internal/identity/application"
 	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
+	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/match/application"
+	matchhandlers "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
+	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
 	progressdomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	progresshttp "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/http"
@@ -72,10 +73,10 @@ func main() {
 	uploadService := analysisapplication.NewUploadService(storageRepo, matchRepo)
 	uploadHandler := matchhandlers.NewUploadHandler(uploadService)
 	analysisRepo := &analysisinfrastructure.PostgresAnalysisRepository{DB: db}
-	jobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
-	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, jobQueue)
+	redisJobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
+	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, redisJobQueue)
 	analysisHandler := matchhandlers.NewAnalysisHandler(analysisService)
-	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, jobQueue, storageRepo)
+	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, redisJobQueue, storageRepo)
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	analysisWorker.Start(workerCtx)
 
@@ -106,8 +107,19 @@ func main() {
 	coachService.SetEventPublisher(eventPublisher)
 
 	eventConsumer := events.NewConsumer(rdb, events.DefaultStream, events.DefaultGroup, "api-server")
-	eventConsumer.HandleFunc(events.EventMatchUploaded, func(ctx context.Context, e events.Event) error {
-		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
+	eventConsumer.HandleFunc(events.EventAnalysisStart, func(ctx context.Context, event events.Event) error {
+		matchID, ok := event.Metadata["match_id"].(string)
+		if !ok {
+			return fmt.Errorf("missing match_id")
+		}
+		videoURL, ok := event.Metadata["video_url"].(string)
+		if !ok {
+			return fmt.Errorf("missing video_url")
+		}
+		return analysisService.StartAnalysis(ctx, matchID, videoURL)
+	})
+	eventConsumer.HandleFunc(events.EventMatchUploaded, func(ctx context.Context, event events.Event) error {
+		return gamificationService.ProcessEvent(ctx, event.UserID, progressdomain.EventType(event.Type), progressdomain.EventMetadata(event.Metadata))
 	})
 	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, e events.Event) error {
 		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
@@ -223,5 +235,3 @@ func main() {
 
 	log.Println("server stopped")
 }
-
-

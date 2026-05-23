@@ -93,7 +93,7 @@ func TestIsExpired(t *testing.T) {
 func TestToPromptContext(t *testing.T) {
 	t.Run("with user profile only", func(t *testing.T) {
 		ctx := Context{
-			UserProfile: UserProfileContext{Age: 20, Position: "ST", Footedness: "Left", Goals: "score more"},
+			UserProfile:     UserProfileContext{Age: 20, Position: "ST", Footedness: "Left", Goals: "score more"},
 			TrainingHistory: TrainingHistoryContext{CurrentStreak: 3},
 		}
 		c := NewConversation("conv-1", "user-1", "session-1", ctx)

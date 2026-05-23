@@ -18,6 +18,7 @@ import (
 )
 
 type mockLLM struct{}
+
 func (m *mockLLM) GenerateResponse(_ context.Context, _ []coachdomain.Message, _ coachdomain.CoachContext) (string, error) {
 	return "Great work!", nil
 }
@@ -29,6 +30,7 @@ func (m *mockLLM) GenerateDietPlan(_ context.Context, _ coachdomain.UserProfile,
 }
 
 type mockAnalysis struct{}
+
 func (m *mockAnalysis) GetLatestAnalysis(_ context.Context, _ string) (*coachdomain.MatchInsight, error) {
 	return &coachdomain.MatchInsight{MatchID: "m-1"}, nil
 }
@@ -37,11 +39,13 @@ func (m *mockAnalysis) GetMatchHistory(_ context.Context, _ string, _ int) ([]*c
 }
 
 type mockCoachUser struct{}
+
 func (m *mockCoachUser) GetUserProfile(_ context.Context, _ string) (*coachdomain.UserProfile, error) {
 	return &coachdomain.UserProfile{Age: 18, Position: "CM", Footedness: "Right", Goals: "improve"}, nil
 }
 
 type mockHistory struct{}
+
 func (m *mockHistory) GetConversation(_ context.Context, _, _ string) (*coachdomain.Conversation, error) {
 	return nil, coachdomain.ErrConversationNotFound
 }
@@ -53,6 +57,7 @@ func (m *mockHistory) FindByUserID(_ context.Context, _ string, _, _ int) ([]*co
 }
 
 type mockCoachEvent struct{}
+
 func (m *mockCoachEvent) PublishEvent(_ context.Context, _ string, _ string, _ map[string]interface{}) error {
 	return nil
 }

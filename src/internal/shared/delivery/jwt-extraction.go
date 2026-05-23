@@ -31,4 +31,3 @@ func ExtractEmailFromJWT(echoCtx *echo.Context) (string, error) {
 	}
 	return claims.Email, nil
 }
-

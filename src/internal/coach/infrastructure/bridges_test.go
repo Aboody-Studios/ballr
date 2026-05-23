@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	analysisdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	identitydomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	analysisdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
 )
 
 type mockMatchRepo struct {

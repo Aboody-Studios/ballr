@@ -278,7 +278,7 @@ func CalculatePoints(eventType EventType, metadata EventMetadata) int64 {
 
 // EventMetadata contains additional data about an event.
 // Used for potential bonus point calculations.
-type EventMetadata map[string]interface{}
+type EventMetadata map[string]any
 
 // NewEventLog creates a new event log entry.
 func NewEventLog(userID string, eventType EventType, points int64, metadata EventMetadata) *EventLog {
