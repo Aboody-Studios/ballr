@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // MatchRepository defines the contract for match persistence operations.
 // Implemented in infrastructure layer to maintain dependency inversion.
@@ -16,6 +19,12 @@ type MatchRepository interface {
 
 	// UpdateAnalysisID links a match to its analysis results.
 	UpdateAnalysisID(ctx context.Context, matchID string, analysisID string) error
+
+	// GetStuckMatches Gets any matches whose status is PROCESSING and AnalysisFlag is false
+	GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*Match, error)
+
+	// FixStuckMatch turns AnalysisFlag to true
+	FixStuckMatch(ctx context.Context, matchID string) error
 }
 
 // AnalysisRepository defines the contract for analysis result persistence.

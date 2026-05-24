@@ -26,7 +26,9 @@ type Match struct {
 	PositionPlayed string          `gorm:"type:varchar(20)"`
 	VideoURL       string          `gorm:"type:varchar(100)"`
 	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
-	UploadedAt     time.Time       `gorm:"autoCreateTime"`
+	AnalysisFlag   bool            `gorm:"default:false"`
+	CreatedAt      time.Time       `gorm:"autoCreateTime"`
+	UpdatedAt      time.Time       `gorm:"autoUpdateTime"`
 	Metadata       MatchMetadata   `gorm:"type:jsonb;serializer:json"`
 	AnalysisResult *AnalysisResult `gorm:"type:jsonb;serializer:json"`
 }
@@ -149,11 +151,15 @@ func (m *Match) MarkUploadComplete(videoURL string) error {
 	if m.Status != MatchStatusUploading {
 		return ErrInvalidStatusTransition
 	}
-
+	m.VideoURL = videoURL
 	m.Status = MatchStatusProcessing
 	m.UploadedAt = time.Now()
 
 	return nil
+}
+
+func (m *Match) MarkAnalysisInit() {
+	m.AnalysisFlag = true
 }
 
 // SetAnalysisResult transitions to COMPLETED and stores the results.

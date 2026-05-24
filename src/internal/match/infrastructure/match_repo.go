@@ -2,8 +2,10 @@ package infrastructure
 
 import (
 	"context"
+	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -53,5 +55,19 @@ func (r *PostgresMatchRepository) UpdateAnalysisID(ctx context.Context, matchID 
 	}
 	match.AnalysisResult = &domain.AnalysisResult{MatchID: analysisID}
 	tx := r.DB.Save(&match)
+	return tx.Error
+}
+
+func (r *PostgresMatchRepository) GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*domain.Match, error) {
+	matches, err := gorm.G[*domain.Match](r.DB).Where("status = ? AND analysis_flag = false AND updated_at < ?", domain.MatchStatusProcessing, cutOffTime).Find(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}
+
+func (r *PostgresMatchRepository) FixStuckMatch(ctx context.Context, matchID string) error {
+	tx :=r.DB.Model(&domain.Match{}).Where("id = ?", matchID).Update("analysis_flag", true)
 	return tx.Error
 }

@@ -90,40 +90,6 @@ func (analysisHandler *AnalysisHandler) GetAnalysisReportHandler(c *echo.Context
 	return c.JSON(http.StatusOK, report)
 }
 
-// StartAnalysisHandler initiates the analysis pipeline after video upload completes.
-// Pushes job to Redis/SQS queue for the analysis worker to process.
-func (analysisHandler *AnalysisHandler) StartAnalysisHandler(c *echo.Context) error {
-	var req struct {
-		MatchID     string `json:"match_id"`
-		ShirtNumber int    `json:"shirt_number"`
-		Position    string `json:"position"`
-		VideoURL    string `json:"video_url"`
-	}
-
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
-	}
-
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed"})
-	}
-
-	claims, err := delivery.ExtractToken(c)
-	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
-	}
-
-	err = analysisHandler.analysisService.StartAnalysis(c.Request().Context(), req.ShirtNumber, req.MatchID, claims.ID, req.Position, req.VideoURL)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start analysis"})
-	}
-
-	return c.JSON(http.StatusAccepted, map[string]string{
-		"match_id": req.MatchID,
-		"status":   "PROCESSING",
-	})
-}
-
 func (uploadHandler *UploadHandler) SuccessfulVideoUploadHandler(echoCtx *echo.Context) error {
 	if uploadHandler.uploadService == nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "upload service not configured"})
@@ -142,8 +108,11 @@ func (uploadHandler *UploadHandler) SuccessfulVideoUploadHandler(echoCtx *echo.C
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Missing S3 object key"})
 	}
 
-	if err := uploadHandler.uploadService.UpdateMatchStatusToProcessing(echoCtx.Request().Context(), s3Key); err != nil {
-		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to confirm upload"})
+	ctx := echoCtx.Request().Context()
+
+	if err := uploadHandler.uploadService.UpdateMatchStatusToProcessing(ctx, s3Key); err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update match status"})
+
 	}
 
 	return echoCtx.JSON(http.StatusOK, map[string]string{"status": "ok"})

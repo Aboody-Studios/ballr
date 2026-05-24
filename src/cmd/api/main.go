@@ -127,12 +127,19 @@ func main() {
 	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, e events.Event) error {
 		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
 	})
+
 	consumerCtx, stopConsumer := context.WithCancel(context.Background())
 	go func() {
 		if err := eventConsumer.Start(consumerCtx); err != nil && err != context.Canceled {
 			log.Printf("event consumer error: %v", err)
 		}
 	}()
+
+	sweeper := analysisinfrastructure.Sweeper{
+		MatchRepo:      matchRepo,
+		EventPublisher: eventPublisher,
+	}
+	go sweeper.SweepStuckMatches(context.Background())
 
 	// --- Server ---
 	echoServer := echo.New()
@@ -164,7 +171,6 @@ func main() {
 	secureGroup.POST("/match/upload-url", uploadHandler.UploadURLHandler)
 	secureGroup.GET("/match/analysis-status/:id", analysisHandler.GetAnalysisStatusHandler)
 	secureGroup.GET("/match/analysis-report/:id", analysisHandler.GetAnalysisReportHandler)
-	secureGroup.POST("/match/analysis-start", analysisHandler.StartAnalysisHandler)
 	secureGroup.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)
 
 	secureGroup.POST("/coach/chat", coachHandler.ChatHandler)

@@ -22,7 +22,7 @@ func NewRedisPublisher(rdb *redis.Client) *RedisPublisher {
 	}
 }
 
-func (p *RedisPublisher) PublishEvent(ctx context.Context, userID string, eventType string, metadata map[string]interface{}) error {
+func (p *RedisPublisher) PublishEvent(ctx context.Context, userID string, eventType string, metadata map[string]any) error {
 	event := Event{
 		ID:        uuid.New().String(),
 		Type:      eventType,
