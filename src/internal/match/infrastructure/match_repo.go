@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
-	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -68,6 +67,6 @@ func (r *PostgresMatchRepository) GetStuckMatches(ctx context.Context, cutOffTim
 }
 
 func (r *PostgresMatchRepository) FixStuckMatch(ctx context.Context, matchID string) error {
-	tx :=r.DB.Model(&domain.Match{}).Where("id = ?", matchID).Update("analysis_flag", true)
+	tx := r.DB.Model(&domain.Match{}).Where("id = ?", matchID).Update("analysis_flag", true)
 	return tx.Error
 }

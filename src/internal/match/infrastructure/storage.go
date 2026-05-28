@@ -16,6 +16,11 @@ type StorageRepository struct {
 	bucket   string
 }
 
+type PresignedUpload struct {
+	URL    string            `json:"url"`
+	Fields map[string]string `json:"fields"`
+}
+
 func NewStorageRepository(s3Client *s3.Client, bucket string) *StorageRepository {
 	return &StorageRepository{
 		s3Client: s3Client,
@@ -23,9 +28,8 @@ func NewStorageRepository(s3Client *s3.Client, bucket string) *StorageRepository
 	}
 }
 
-func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, matchID string) (string, error) {
+func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, matchID string) (*PresignedUpload, error) {
 	filename := fmt.Sprintf("users/%s/videos/%s", userID, matchID)
-	//TODO!: Add proper video size validation by using an S3 Presigned POST to have a set of strictly enforced rules
 	s3PutObj := &s3.PutObjectInput{
 		Bucket:      &r.bucket,
 		Key:         &filename,
@@ -33,12 +37,24 @@ func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, match
 	}
 	presignClient := s3.NewPresignClient(r.s3Client)
 
-	request, err := presignClient.PresignPutObject(ctx, s3PutObj)
+	request, err := presignClient.PresignPostObject(ctx, s3PutObj, func(ppo *s3.PresignPostOptions) {
+		sizeValidation := []any{
+			"content-length-range",
+			1,
+			3375000000,
+		}
+
+		ppo.Conditions = append(ppo.Conditions, sizeValidation)
+	})
+
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return request.URL, nil
+	return &PresignedUpload{
+		URL:    request.URL,
+		Fields: request.Values,
+	}, nil
 }
 
 func (r *StorageRepository) GetDownloadURL(ctx context.Context, videoID string) (string, error) {

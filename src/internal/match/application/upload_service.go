@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
+	"github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
@@ -28,8 +29,7 @@ func (s *UploadService) SetEventPublisher(p events.Publisher) {
 	s.eventPublisher = p
 }
 
-// GenerateUploadURL handles the upload URL generation use case.
-func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest *MatchRequest, userID string) (string, error) {
+func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest *MatchRequest, userID string) (*infrastructure.PresignedUpload, error) {
 	return s.RequestUploadURL(ctx, matchRequest, userID)
 }
 
@@ -38,9 +38,9 @@ func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest 
 //   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
 //
 // a nice Easter egg for  future reference yk
-func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *MatchRequest, userID string) (string, error) {
+func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *MatchRequest, userID string) (*infrastructure.PresignedUpload, error) {
 	if matchRequest.Size > 3375000000 {
-		return "", fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, matchRequest.Size, 3375000000)
+		return nil, fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, matchRequest.Size, 3375000000)
 	}
 
 	match := &domain.Match{
@@ -54,17 +54,17 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 	// if it was the other way around and the persistence fails,
 	// we would have a match in s3 without a record in the database.
 	if err := s.matchRepo.Save(ctx, match); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	//match.ID is accessible here because a pointer to the match struct is passed to the database.
 	// Which means any changes to the struct in the repo layer will have its effects here also.
-	uploadURL, err := s.storageProvider.GenerateUploadURL(ctx, userID, match.ID)
+	PresignedUploadStruct, err := s.storageProvider.GenerateUploadURL(ctx, userID, match.ID)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate upload url: %w", err)
+		return  nil, fmt.Errorf("failed to generate upload url: %w", err)
 	}
 
-	return uploadURL, nil
+	return PresignedUploadStruct, nil
 }
 
 // ConfirmUploadByS3Key updates match status to PROCESSING after S3 confirms upload.
