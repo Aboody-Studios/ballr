@@ -169,6 +169,7 @@ func (p *Progress) UpdateStreak(activityDate time.Time) {
 
 // NextStreakExpiry returns the time when the current streak will expire if no activity occurs.
 // A streak expires at midnight after the last active day.
+// TODO!: Fetch LastActive from database
 func (p *Progress) NextStreakExpiry() time.Time {
 	y, m, d := p.LastActive.Date()
 	nextDay := time.Date(y, m, d, 0, 0, 0, 0, p.LastActive.Location()).Add(48 * time.Hour)

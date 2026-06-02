@@ -17,39 +17,39 @@ func NewProgressHandler(service *application.GamificationService) *ProgressHandl
 	return &ProgressHandler{progressService: service}
 }
 
-func (h *ProgressHandler) GetProgressSummaryHandler(c *echo.Context) error {
-	claims, err := delivery.ExtractToken(c)
+func (h *ProgressHandler) GetProgressSummaryHandler(echoCtx *echo.Context) error {
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
-	summary, err := h.progressService.GetProgressSummary(c.Request().Context(), claims.ID)
+	summary, err := h.progressService.GetProgressSummary(echoCtx.Request().Context(), claims.ID)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "Progress not found"})
+		return echoCtx.JSON(http.StatusNotFound, map[string]string{"error": "Progress not found"})
 	}
-
-	return c.JSON(http.StatusOK, summary)
+	// TODO!: Maybe return map text like the handlers below
+	return echoCtx.JSON(http.StatusOK, summary)
 }
 
-func (h *ProgressHandler) ListAchievementsHandler(c *echo.Context) error {
-	claims, err := delivery.ExtractToken(c)
+func (h *ProgressHandler) ListAchievementsHandler(echoCtx *echo.Context) error {
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
-	achievements, err := h.progressService.GetAchievements(c.Request().Context(), claims.ID)
+	achievements, err := h.progressService.GetAchievements(echoCtx.Request().Context(), claims.ID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load achievements"})
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load achievements"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	return echoCtx.JSON(http.StatusOK, map[string]any{
 		"achievements": achievements,
 	})
 }
 
-func (h *ProgressHandler) GetLeaderboardHandler(c *echo.Context) error {
-	offsetStr := c.QueryParam("offset")
-	limitStr := c.QueryParam("limit")
+func (h *ProgressHandler) GetLeaderboardHandler(echoCtx *echo.Context) error {
+	offsetStr := echoCtx.QueryParam("offset")
+	limitStr := echoCtx.QueryParam("limit")
 
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil || offset < 0 {
@@ -61,12 +61,12 @@ func (h *ProgressHandler) GetLeaderboardHandler(c *echo.Context) error {
 		limit = 25
 	}
 
-	leaderboard, err := h.progressService.GetLeaderboard(c.Request().Context(), offset, limit)
+	leaderboard, err := h.progressService.GetLeaderboard(echoCtx.Request().Context(), offset, limit)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load leaderboard"})
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load leaderboard"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return echoCtx.JSON(http.StatusOK, map[string]any{
 		"leaderboard": leaderboard,
 		"offset":      offset,
 		"limit":       limit,

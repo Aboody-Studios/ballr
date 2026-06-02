@@ -171,7 +171,7 @@ func main() {
 	secureGroup.GET("/auth/me", identityHandler.GetProfileHandler)
 	secureGroup.PUT("/auth/profile", identityHandler.CompleteProfileHandler)
 
-	secureGroup.POST("/match/upload-url", uploadHandler.UploadURLHandler)
+	secureGroup.POST("/match/upload-url", uploadHandler.PresignedPostObjHandler)
 	secureGroup.GET("/match/analysis-status/:id", analysisHandler.GetAnalysisStatusHandler)
 	secureGroup.GET("/match/analysis-report/:id", analysisHandler.GetAnalysisReportHandler)
 	secureGroup.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)

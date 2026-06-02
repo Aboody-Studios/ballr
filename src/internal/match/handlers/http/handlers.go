@@ -35,7 +35,7 @@ func NewUploadHandler(service *application.UploadService) *UploadHandler {
 // 4. Client uploads directly to S3
 // 5. Client notifies backend to start analysis
 // WARN!
-func (uploadHandler *UploadHandler) UploadURLHandler(echoCtx *echo.Context) error {
+func (uploadHandler *UploadHandler) PresignedPostObjHandler(echoCtx *echo.Context) error {
 	var matchRequest application.MatchRequest
 	if err := echoCtx.Bind(&matchRequest); err != nil {
 		return err

@@ -167,6 +167,11 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 		return nil, fmt.Errorf("failed to load achievements: %w", err)
 	}
 
+	recentEvents, err := s.eventLogRepo.FindRecentByUserID(ctx, userID, 10)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find recent user activities: %w", err)
+	}
+
 	summary := &domain.ProgressSummary{
 		UserID:           userID,
 		TotalPoints:      progress.TotalPoints,
@@ -174,18 +179,15 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 		LastActive:       progress.LastActive,
 		NextStreakExpiry: progress.NextStreakExpiry(),
 		AchievementCount: int64(len(achievements)),
-		RecentEvents:     make([]domain.EventSummary, 0, 10),
+		RecentEvents:     make([]domain.EventSummary, 0, len(recentEvents)),
 	}
 
-	events, err := s.eventLogRepo.FindRecentByUserID(ctx, userID, 10)
-	if err == nil {
-		for _, event := range events {
-			summary.RecentEvents = append(summary.RecentEvents, domain.EventSummary{
-				Type:      string(event.Type),
-				Points:    event.PointsAwarded,
-				Timestamp: event.Timestamp,
-			})
-		}
+	for _, event := range recentEvents {
+		summary.RecentEvents = append(summary.RecentEvents, domain.EventSummary{
+			Type:      string(event.Type),
+			Points:    event.PointsAwarded,
+			Timestamp: event.Timestamp,
+		})
 	}
 
 	return summary, nil
