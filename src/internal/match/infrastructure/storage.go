@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -16,11 +17,6 @@ type StorageRepository struct {
 	bucket   string
 }
 
-type PresignedUpload struct {
-	URL    string            `json:"url"`
-	Fields map[string]string `json:"fields"`
-}
-
 func NewStorageRepository(s3Client *s3.Client, bucket string) *StorageRepository {
 	return &StorageRepository{
 		s3Client: s3Client,
@@ -28,7 +24,7 @@ func NewStorageRepository(s3Client *s3.Client, bucket string) *StorageRepository
 	}
 }
 
-func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, matchID string) (*PresignedUpload, error) {
+func (r *StorageRepository) GeneratePresignedPostObj(ctx context.Context, userID, matchID string) (*domain.PresignedUpload, error) {
 	filename := fmt.Sprintf("users/%s/videos/%s", userID, matchID)
 	s3PutObj := &s3.PutObjectInput{
 		Bucket:      &r.bucket,
@@ -51,7 +47,7 @@ func (r *StorageRepository) GenerateUploadURL(ctx context.Context, userID, match
 		return nil, err
 	}
 
-	return &PresignedUpload{
+	return &domain.PresignedUpload{
 		URL:    request.URL,
 		Fields: request.Values,
 	}, nil

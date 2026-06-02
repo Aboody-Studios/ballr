@@ -7,17 +7,16 @@ import (
 	"strings"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
-	"github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
 type UploadService struct {
-	storageProvider StorageProvider
+	storageProvider domain.S3StorageProvider
 	matchRepo       domain.MatchRepository
 	eventPublisher  events.Publisher
 }
 
-func NewUploadService(provider StorageProvider, repo domain.MatchRepository) *UploadService {
+func NewUploadService(provider domain.S3StorageProvider, repo domain.MatchRepository) *UploadService {
 	return &UploadService{
 		storageProvider: provider,
 		matchRepo:       repo,
@@ -29,7 +28,7 @@ func (s *UploadService) SetEventPublisher(p events.Publisher) {
 	s.eventPublisher = p
 }
 
-func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest *MatchRequest, userID string) (*infrastructure.PresignedUpload, error) {
+func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest *MatchRequest, userID string) (*domain.PresignedUpload, error) {
 	return s.RequestUploadURL(ctx, matchRequest, userID)
 }
 
@@ -38,7 +37,7 @@ func (s *UploadService) StartUploadURLService(ctx context.Context, matchRequest 
 //   - File size must not exceed 3,375,000,000 bytes (~3.14 GB : PI GB)
 //
 // a nice Easter egg for  future reference yk
-func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *MatchRequest, userID string) (*infrastructure.PresignedUpload, error) {
+func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *MatchRequest, userID string) (*domain.PresignedUpload, error) {
 	if matchRequest.Size > 3375000000 {
 		return nil, fmt.Errorf("%w: size %d exceeds maximum %d", ErrFileTooLarge, matchRequest.Size, 3375000000)
 	}
@@ -59,7 +58,7 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 
 	//match.ID is accessible here because a pointer to the match struct is passed to the database.
 	// Which means any changes to the struct in the repo layer will have its effects here also.
-	PresignedUploadStruct, err := s.storageProvider.GenerateUploadURL(ctx, userID, match.ID)
+	PresignedUploadStruct, err := s.storageProvider.GeneratePresignedPostObj(ctx, userID, match.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate upload url: %w", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/application"
+	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	"github.com/labstack/echo/v5"
 )
@@ -46,14 +47,13 @@ func (uploadHandler *UploadHandler) UploadURLHandler(echoCtx *echo.Context) erro
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
-	uploadURL, s3Err := uploadHandler.uploadService.StartUploadURLService(echoCtx.Request().Context(), &matchRequest, jwt.ID)
+	presignedUpload, s3Err := uploadHandler.uploadService.StartUploadURLService(echoCtx.Request().Context(), &matchRequest, jwt.ID)
 
 	if s3Err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
-	//TODO!: Return URL and Values map
-	return echoCtx.JSON(http.StatusOK, map[string]string{"URL": uploadURL})
+	return echoCtx.JSON(http.StatusOK, map[string]*domain.PresignedUpload{"presigned_upload_records": presignedUpload})
 }
 
 // GetAnalysisStatusHandler retrieves the current processing status of a match analysis.

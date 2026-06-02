@@ -46,7 +46,7 @@ func (h *CoachHandler) ChatHandler(echoCtx *echo.Context) error {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "AI service unavailable"})
 	}
 
-	return echoCtx.JSON(http.StatusOK, map[string]interface{}{
+	return echoCtx.JSON(http.StatusOK, map[string]any{
 		"response":   response.Content,
 		"session_id": req.SessionID,
 		"role":       response.Role,
@@ -96,21 +96,21 @@ func (h *CoachHandler) GenerateDietHandler(echoCtx *echo.Context) error {
 
 // GetHistoryHandler retrieves the conversation history for the authenticated user.
 // Endpoint: GET /coach/history
-func (h *CoachHandler) GetHistoryHandler(c *echo.Context) error {
-	claims, err := delivery.ExtractToken(c)
+func (h *CoachHandler) GetHistoryHandler(echoCtx *echo.Context) error {
+	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
 	limit := 20
 	offset := 0
 
-	conversations, err := h.coachService.GetHistory(c.Request().Context(), claims.ID, limit, offset)
+	conversations, err := h.coachService.GetHistory(echoCtx.Request().Context(), claims.ID, limit, offset)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve history"})
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve history"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return echoCtx.JSON(http.StatusOK, map[string]any{
 		"conversations": conversations,
 		"total":         len(conversations),
 	})

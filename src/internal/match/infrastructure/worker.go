@@ -19,15 +19,6 @@ import (
 // execCommandContext is overridable for testing.
 var execCommandContext = exec.CommandContext
 
-// videoStorage provides video file operations for the CV pipeline.
-type videoStorage interface {
-	DownloadVideo(ctx context.Context, userID, matchID string) (string, error)
-	UploadFile(ctx context.Context, key, filePath, contentType string) (string, error)
-	GenerateUploadURL(ctx context.Context, userID, matchID string) (string, error)
-	GetDownloadURL(ctx context.Context, videoID string) (string, error)
-	DeleteVideo(ctx context.Context, videoID string) error
-}
-
 const (
 	cvPythonPath   = "python3"
 	cvScriptPath   = "src/cv/main.py"

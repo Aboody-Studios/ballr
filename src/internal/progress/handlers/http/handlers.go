@@ -42,7 +42,7 @@ func (h *ProgressHandler) ListAchievementsHandler(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load achievements"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"achievements": achievements,
 	})
 }

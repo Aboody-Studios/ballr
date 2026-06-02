@@ -27,7 +27,7 @@ func (b *CoachAnalysisBridge) GetLatestAnalysis(ctx context.Context, userID stri
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
-		return matches[i].UploadedAt.After(matches[j].UploadedAt)
+		return matches[i].CreatedAt.After(matches[j].CreatedAt)
 	})
 
 	for _, m := range matches {
@@ -50,7 +50,7 @@ func (b *CoachAnalysisBridge) GetMatchHistory(ctx context.Context, userID string
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
-		return matches[i].UploadedAt.After(matches[j].UploadedAt)
+		return matches[i].CreatedAt.After(matches[j].CreatedAt)
 	})
 
 	result := make([]*coachdomain.MatchInsight, 0, min(limit, len(matches)))
