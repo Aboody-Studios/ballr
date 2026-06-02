@@ -66,7 +66,18 @@ func (r *PostgresMatchRepository) GetStuckMatches(ctx context.Context, cutOffTim
 	return matches, nil
 }
 
-func (r *PostgresMatchRepository) FixStuckMatch(ctx context.Context, matchID string) error {
-	tx := r.DB.Model(&domain.Match{}).Where("id = ?", matchID).Update("analysis_flag", true)
+// ClaimStuckMatch atomically sets analysis_flag = true only if it was previously false.
+// It returns true if this call successfully claimed the match (rows affected == 1).
+func (r *PostgresMatchRepository) ClaimStuckMatch(ctx context.Context, matchID string) (bool, error) {
+	tx := r.DB.Model(&domain.Match{}).Where("id = ? AND analysis_flag = false", matchID).Update("analysis_flag", true)
+	if tx.Error != nil {
+		return false, tx.Error
+	}
+	return tx.RowsAffected > 0, nil
+}
+
+// UnclaimMatch sets analysis_flag = false for a match, used to revert a claim on failure.
+func (r *PostgresMatchRepository) UnclaimMatch(ctx context.Context, matchID string) error {
+	tx := r.DB.Model(&domain.Match{}).Where("id = ?", matchID).Update("analysis_flag", false)
 	return tx.Error
 }

@@ -73,6 +73,28 @@ func (r *mockMatchRepo) UpdateAnalysisID(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (r *mockMatchRepo) ClaimStuckMatch(_ context.Context, matchID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if m, ok := r.matches[matchID]; ok {
+		if m.AnalysisFlag {
+			return false, nil
+		}
+		m.AnalysisFlag = true
+		return true, nil
+	}
+	return false, nil
+}
+
+func (r *mockMatchRepo) UnclaimMatch(_ context.Context, matchID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if m, ok := r.matches[matchID]; ok {
+		m.AnalysisFlag = false
+	}
+	return nil
+}
+
 type mockAnaRepo struct{}
 
 func (r *mockAnaRepo) Save(_ context.Context, _ *domain.AnalysisResult) error { return nil }

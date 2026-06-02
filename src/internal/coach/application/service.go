@@ -93,7 +93,7 @@ func (s *Service) Chat(ctx context.Context, userID, sessionID, message string) (
 		fmt.Printf("failed to save conversation history: %v\n", err)
 	}
 
-	if err := s.eventPublisher.PublishEvent(ctx, userID, "COACH_INTERACTION", nil); err != nil {
+	if err := s.eventPublisher.PublishEvent(ctx, userID, events.EventCoachInteraction, nil); err != nil {
 		fmt.Printf("failed to publish coach interaction event: %v\n", err)
 	}
 

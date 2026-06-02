@@ -70,6 +70,29 @@ func (r *mockMatchRepo) UpdateAnalysisID(_ context.Context, _ string, _ string) 
 	return nil
 }
 
+func (r *mockMatchRepo) ClaimStuckMatch(_ context.Context, matchID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	m, ok := r.matches[matchID]
+	if !ok {
+		return false, nil
+	}
+	if m.AnalysisFlag {
+		return false, nil
+	}
+	m.AnalysisFlag = true
+	return true, nil
+}
+
+func (r *mockMatchRepo) UnclaimMatch(_ context.Context, matchID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if m, ok := r.matches[matchID]; ok {
+		m.AnalysisFlag = false
+	}
+	return nil
+}
+
 type mockAnalysisRepo struct {
 	mu       sync.Mutex
 	analyses map[string]*domain.AnalysisResult

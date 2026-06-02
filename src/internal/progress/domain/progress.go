@@ -47,7 +47,7 @@ const (
 	AchievementTypeCoachConsult   AchievementType = "COACH_CONSULT"
 )
 
-// EventType categorizes activities that generate points.
+// TODO!: Remove from here or from event.go
 type EventType string
 
 const (

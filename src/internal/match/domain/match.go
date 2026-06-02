@@ -114,7 +114,7 @@ func NewMatch(id, userID string, shirtNumber int, positionPlayed string, metadat
 		ShirtNumber:    shirtNumber,
 		PositionPlayed: positionPlayed,
 		Status:         MatchStatusUploading,
-		UploadedAt:     time.Now(),
+		UpdatedAt:      time.Now(),
 		Metadata:       metadata,
 	}
 
@@ -147,13 +147,13 @@ func (m *Match) Validate() error {
 }
 
 // MarkUploadComplete transitions from UPLOADING to PROCESSING.
-func (m *Match) MarkUploadComplete(videoURL string) error {
+func (m *Match) UpdateMatchStatusToProcessing(videoURL string) error {
 	if m.Status != MatchStatusUploading {
 		return ErrInvalidStatusTransition
 	}
 	m.VideoURL = videoURL
 	m.Status = MatchStatusProcessing
-	m.UploadedAt = time.Now()
+	m.UpdatedAt = time.Now()
 
 	return nil
 }

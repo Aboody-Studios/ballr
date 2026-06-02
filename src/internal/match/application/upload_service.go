@@ -61,7 +61,7 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 	// Which means any changes to the struct in the repo layer will have its effects here also.
 	PresignedUploadStruct, err := s.storageProvider.GenerateUploadURL(ctx, userID, match.ID)
 	if err != nil {
-		return  nil, fmt.Errorf("failed to generate upload url: %w", err)
+		return nil, fmt.Errorf("failed to generate upload url: %w", err)
 	}
 
 	return PresignedUploadStruct, nil
@@ -69,18 +69,18 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 
 // ConfirmUploadByS3Key updates match status to PROCESSING after S3 confirms upload.
 // The s3Key format is: users/{userID}/videos/{matchID}
-func (s *UploadService) UpdateMatchStatusToProcessing(ctx context.Context, s3Key string) error {
+func (s *UploadService) StartMatchProcessingWorflow(ctx context.Context, s3Key string) error {
+	//TODO!: Refactor any instance of using match repo, as the service layer shouldn't directly use it
 	matchID, err := parseMatchIDFromS3Key(s3Key)
 	if err != nil {
 		return fmt.Errorf("parse s3 key: %w", err)
 	}
-
 	match, err := s.matchRepo.FindByID(ctx, matchID)
 	if err != nil {
 		return fmt.Errorf("match not found: %w", err)
 	}
 
-	if err := match.MarkUploadComplete(s3Key); err != nil {
+	if err := match.UpdateMatchStatusToProcessing(s3Key); err != nil {
 		return fmt.Errorf("status update error: %w", err)
 	}
 

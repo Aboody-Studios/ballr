@@ -124,6 +124,7 @@ func main() {
 	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, e events.Event) error {
 		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
 	})
+	//TODO!: PublishEvent for coach interaction
 	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, e events.Event) error {
 		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
 	})
@@ -148,17 +149,20 @@ func main() {
 	echoServer.Use(echomw.Recover())
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	var allowedOrigins []string
+
 	if corsOrigins == "" || corsOrigins == "*" {
 		allowedOrigins = []string{"*"}
 		log.Println("WARNING: CORS allows all origins. Set CORS_ORIGINS env var in production.")
 	} else {
 		allowedOrigins = strings.Split(corsOrigins, ",")
 	}
-	echoServer.Use(echomw.CORSWithConfig(echomw.CORSConfig{
-		AllowOrigins: allowedOrigins,
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders: []string{"Authorization", "Content-Type"},
-	}))
+
+	echoServer.Use(
+		echomw.CORSWithConfig(echomw.CORSConfig{
+			AllowOrigins: allowedOrigins,
+			AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowHeaders: []string{"Authorization", "Content-Type"},
+		}))
 
 	secureGroup := echoServer.Group("/secure")
 	echoJWTConfig := echojwt.Config{SigningKey: []byte(secretKey)}

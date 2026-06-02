@@ -41,10 +41,10 @@ type Worker struct {
 	analysisRepo   domain.AnalysisRepository
 	jobQueue       domain.JobQueue
 	eventPublisher events.Publisher
-	storageRepo    videoStorage
+	storageRepo    *StorageRepository
 }
 
-func NewWorker(matchRepo domain.MatchRepository, analysisRepo domain.AnalysisRepository, jobQueue domain.JobQueue, storageRepo videoStorage) *Worker {
+func NewWorker(matchRepo domain.MatchRepository, analysisRepo domain.AnalysisRepository, jobQueue domain.JobQueue, storageRepo *StorageRepository) *Worker {
 	return &Worker{
 		matchRepo:      matchRepo,
 		analysisRepo:   analysisRepo,
@@ -174,7 +174,7 @@ func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *
 		return fmt.Errorf("update match status: %w", err)
 	}
 
-	if err := w.eventPublisher.PublishEvent(ctx, job.UserID, "ANALYSIS_COMPLETED", nil); err != nil {
+	if err := w.eventPublisher.PublishEvent(ctx, job.UserID, events.EventAnalysisCompleted, nil); err != nil {
 		log.Warn("failed to publish completion event", "error", err)
 	}
 

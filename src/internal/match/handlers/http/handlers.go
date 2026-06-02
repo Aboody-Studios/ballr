@@ -52,6 +52,7 @@ func (uploadHandler *UploadHandler) UploadURLHandler(echoCtx *echo.Context) erro
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
+	//TODO!: Return URL and Values map
 	return echoCtx.JSON(http.StatusOK, map[string]string{"URL": uploadURL})
 }
 
@@ -110,7 +111,7 @@ func (uploadHandler *UploadHandler) SuccessfulVideoUploadHandler(echoCtx *echo.C
 
 	ctx := echoCtx.Request().Context()
 
-	if err := uploadHandler.uploadService.UpdateMatchStatusToProcessing(ctx, s3Key); err != nil {
+	if err := uploadHandler.uploadService.StartMatchProcessingWorflow(ctx, s3Key); err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update match status"})
 
 	}

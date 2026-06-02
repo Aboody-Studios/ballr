@@ -23,8 +23,13 @@ type MatchRepository interface {
 	// GetStuckMatches Gets any matches whose status is PROCESSING and AnalysisFlag is false
 	GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*Match, error)
 
-	// FixStuckMatch turns AnalysisFlag to true
-	FixStuckMatch(ctx context.Context, matchID string) error
+	// ClaimStuckMatch atomically claims a stuck match by setting AnalysisFlag=true.
+	// Returns true if this call successfully claimed the match, false if it was already claimed.
+	ClaimStuckMatch(ctx context.Context, matchID string) (bool, error)
+
+	// UnclaimMatch releases a previously claimed match by setting AnalysisFlag=false.
+	// Used to revert claims if downstream publish/enqueue fails.
+	UnclaimMatch(ctx context.Context, matchID string) error
 }
 
 // AnalysisRepository defines the contract for analysis result persistence.

@@ -30,17 +30,29 @@ func (swpr *Sweeper) SweepStuckMatches(ctx context.Context) error {
 			}
 
 			for _, match := range matches {
+				// Attempt to atomically claim the match so only one sweeper/process enqueues the job.
+				claimable, err := swpr.MatchRepo.ClaimStuckMatch(ctx, match.ID)
+				if err != nil {
+					log.Printf("claim failure: %v", err)
+					continue
+				}
+				if !claimable {
+					// Someone else already claimed it.
+					continue
+				}
+
 				eventMap := map[string]any{
 					"match_id":  match.ID,
 					"video_url": match.VideoURL,
 				}
 
 				if err := swpr.EventPublisher.PublishEvent(ctx, match.UserID, events.EventAnalysisStart, eventMap); err != nil {
+					// Publish failed; revert claim so another sweeper can retry later.
+					if err2 := swpr.MatchRepo.UnclaimMatch(ctx, match.ID); err2 != nil {
+						log.Printf("revert claim failed: %v", err2)
+					}
 					log.Printf("Publish failure: %v", err)
 					continue
-				}
-				if err := swpr.MatchRepo.FixStuckMatch(ctx, match.ID); err != nil {
-					log.Printf("analysis flag error: %v", err)
 				}
 			}
 		}

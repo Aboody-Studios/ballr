@@ -10,6 +10,7 @@ type Event struct {
 	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
+// TODO!: Remove from here or from progress.go
 const (
 	EventMatchUploaded     = "MATCH_UPLOADED"
 	EventAnalysisCompleted = "ANALYSIS_COMPLETED"
