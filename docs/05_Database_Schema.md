@@ -13,7 +13,7 @@ The database layer uses a hybrid approach:
 | `id` | UUID | Primary Key |
 | `email` | String | Unique email |
 | `password_hash` | String | Encrypted password |
-| `full_name` | String | User's name |
+| `full_name` | String | User's name 
 | `birth_date` | Date | Used for age calculation |
 | `position` | Enum | GK, CB, LB, RB, CM, LW, RW, ST |
 | `footedness` | Enum | Left, Right, Both |

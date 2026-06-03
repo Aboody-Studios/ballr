@@ -47,16 +47,6 @@ func (r *PostgresMatchRepository) UpdateStatus(ctx context.Context, matchID stri
 	return tx.Error
 }
 
-func (r *PostgresMatchRepository) UpdateAnalysisID(ctx context.Context, matchID string, analysisID string) error {
-	match, err := gorm.G[domain.Match](r.DB).Where("id = ?", matchID).First(ctx)
-	if err != nil {
-		return err
-	}
-	match.AnalysisResult = &domain.AnalysisResult{MatchID: analysisID}
-	tx := r.DB.Save(&match)
-	return tx.Error
-}
-
 func (r *PostgresMatchRepository) GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*domain.Match, error) {
 	matches, err := gorm.G[*domain.Match](r.DB).Where("status = ? AND analysis_flag = false AND updated_at < ?", domain.MatchStatusProcessing, cutOffTime).Find(ctx)
 	if err != nil {

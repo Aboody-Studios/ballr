@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+//TODO!: Consolidate match & analysis repos
+
 // MatchRepository defines the contract for match persistence operations.
 // Implemented in infrastructure layer to maintain dependency inversion.
 type MatchRepository interface {
@@ -16,9 +18,6 @@ type MatchRepository interface {
 
 	// UpdateStatus modifies the processing status of a match.
 	UpdateStatus(ctx context.Context, matchID string, status MatchStatus) error
-
-	// UpdateAnalysisID links a match to its analysis results.
-	UpdateAnalysisID(ctx context.Context, matchID string, analysisID string) error
 
 	// GetStuckMatches Gets any matches whose status is PROCESSING and AnalysisFlag is false
 	GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*Match, error)
@@ -44,6 +43,9 @@ type AnalysisRepository interface {
 
 	// UpdateSummary updates the summary statistics (distance, speed, accuracy).
 	UpdateSummary(ctx context.Context, matchID string, summary AnalysisSummary) error
+
+	// UpdateAnalysisID links a match to its analysis results.
+	UpdateAnalysisID(ctx context.Context, matchID string, analysisID string) error
 
 	// AddEvent appends a new event to the analysis events list.
 	AddEvent(ctx context.Context, matchID string, event MatchEvent) error

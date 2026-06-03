@@ -28,7 +28,7 @@ const (
 )
 
 type MatchRequest struct {
-	ShirtNumber int           `json:"shirt_number"`
+	ShirtNumber uint          `json:"shirt_number"`
 	Position    string        `json:"position"`
 	Size        uint64        `json:"size"`
 	Metadata    MatchMetadata `json:"metadata"`

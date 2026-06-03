@@ -6,7 +6,7 @@ type AnalysisJob struct {
 	MatchID     string `json:"match_id"`
 	UserID      string `json:"user_id"`
 	VideoURL    string `json:"video_url"`
-	ShirtNumber int    `json:"shirt_number"`
+	ShirtNumber uint   `json:"shirt_number"`
 	Position    string `json:"position"`
 }
 

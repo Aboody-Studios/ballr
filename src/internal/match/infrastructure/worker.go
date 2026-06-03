@@ -9,11 +9,11 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"strconv"
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
+	"github.com/google/uuid"
 )
 
 // execCommandContext is overridable for testing.
@@ -122,11 +122,12 @@ func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *
 	}
 
 	log.Info("starting CV analysis")
+	//TODO!: Change fmt to something from strconv as it is computationally heavy
 	cmd := execCommandContext(jobCtx, "python3", scriptPath,
 		"--video", videoPath,
 		"--match-id", job.MatchID,
 		"--user-id", job.UserID,
-		"--shirt-number", strconv.Itoa(job.ShirtNumber),
+		"--shirt-number", fmt.Sprintf("%d", job.ShirtNumber),
 		"--position", job.Position,
 	)
 
@@ -227,6 +228,7 @@ func (r *cvResult) toDomain(matchID string) *domain.AnalysisResult {
 	}
 
 	return &domain.AnalysisResult{
+		ID:          uuid.New().String(),
 		MatchID:     matchID,
 		GeneratedAt: time.Now(),
 		Summary: domain.AnalysisSummary{
