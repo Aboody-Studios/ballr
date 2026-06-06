@@ -3,6 +3,7 @@ package domain
 import (
 	"time"
 
+	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/google/uuid"
 )
 
@@ -23,10 +24,13 @@ type Progress struct {
 // Achievements are value objects that are part of the Progress aggregate.
 // TODO!: Remove gorm
 type Achievement struct {
-	ID          string    `gorm:"primaryKey"`
-	UserID      string    `gorm:"uniqueIndex:idx_user_achievement;not null"`
-	Type        string    `gorm:"uniqueIndex:idx_user_achievement;not null"`
-	UnlockedAt  time.Time `gorm:"autoCreateTime"`
+	ID          string   `gorm:"primaryKey"`
+	Progress    Progress `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	progressID  string
+	User        domain.User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID      string      `gorm:"uniqueIndex:idx_user_achievement;not null"`
+	Type        string      `gorm:"uniqueIndex:idx_user_achievement;not null"`
+	UnlockedAt  time.Time   `gorm:"autoCreateTime"`
 	PointsValue int
 }
 
@@ -46,6 +50,15 @@ const (
 	AchievementTypeTopPerformer   AchievementType = "TOP_PERFORMER"
 	AchievementTypeCoachConsult   AchievementType = "COACH_CONSULT"
 )
+
+type EventLog struct {
+	User          domain.User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID        string      `gorm:"index:idx_user_event;not null"`
+	Type          string      `gorm:"index:idx_user_event;not null"`
+	PointsAwarded int64
+	Timestamp     time.Time      `gorm:"index"`
+	Metadata      map[string]any `gorm:"type:jsonb;serializer:json"`
+}
 
 // TODO!: Remove from here or from event.go
 type EventType string

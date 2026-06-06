@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"time"
 )
 
 // ProgressRepository defines the contract for user progress persistence.
@@ -53,15 +52,6 @@ type EventLogRepository interface {
 
 	// FindRecentByUserID retrieves recent events for a user's activity feed.
 	FindRecentByUserID(ctx context.Context, userID string, limit int) ([]*EventLog, error)
-}
-
-// EventLog represents a single gamification event for analytics.
-type EventLog struct {
-	UserID        string `gorm:"index:idx_user_event;not null"`
-	Type          string `gorm:"index:idx_user_event;not null"`
-	PointsAwarded int64
-	Timestamp     time.Time              `gorm:"index"`
-	Metadata      map[string]interface{} `gorm:"type:jsonb;serializer:json"`
 }
 
 // LeaderboardRepository defines the contract for leaderboard operations.

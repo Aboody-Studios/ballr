@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/google/uuid"
 )
 
@@ -13,13 +14,14 @@ import (
 // This is the aggregate root for the Coach bounded context.
 // TODO!: Remove gorm
 type Conversation struct {
-	ID        string    `gorm:"primaryKey"`
-	UserID    string    `gorm:"index;not null"`
-	SessionID string    `gorm:"uniqueIndex:idx_user_session;not null"`
-	Messages  []Message `gorm:"type:jsonb;serializer:json"`
-	CreatedAt time.Time `gorm:"autoCreateTime"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	Context   Context   `gorm:"type:jsonb;serializer:json"`
+	ID        string      `gorm:"primaryKey"`
+	User      domain.User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID    string      `gorm:"index;not null"`
+	SessionID string      `gorm:"uniqueIndex:idx_user_session;not null"`
+	Messages  []Message   `gorm:"type:jsonb;serializer:json"`
+	CreatedAt time.Time   `gorm:"autoCreateTime"`
+	UpdatedAt time.Time   `gorm:"autoUpdateTime"`
+	Context   Context     `gorm:"type:jsonb;serializer:json"`
 }
 
 type Message struct {

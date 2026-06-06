@@ -2,6 +2,8 @@ package domain
 
 import (
 	"time"
+
+	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 )
 
 // I want to admit that go really looks so good and makes me feel like i was fighting something in rust and all those structs are insane
@@ -21,6 +23,7 @@ const (
 // TODO!: Remove gorm
 type Match struct {
 	ID             string        `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	User           domain.User   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserID         string        `gorm:"index;not null"`
 	ShirtNumber    uint          `gorm:"not null"`
 	PositionPlayed string        `gorm:"type:varchar(20)"`
@@ -105,7 +108,7 @@ func (m *Match) MarkFailed() error {
 // CanViewResults returns true if the match has completed analysis.
 // TODO!: Call analysis result table here instead of match
 func (ar *AnalysisResult) CanViewResults(matchID string) bool {
-	//TODO!: Fetch match frm=om database using matchID to check its status
+	//TODO!: Fetch match from database using matchID to check its status
 	return m.Status == MatchStatusCompleted && m.AnalysisResult != nil
 }
 
