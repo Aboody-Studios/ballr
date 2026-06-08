@@ -19,7 +19,7 @@ type Consumer struct {
 	consumer string
 
 	mu       sync.RWMutex
-	handlers map[string][]Handler
+	handlers map[EventType][]Handler
 }
 
 func NewConsumer(rdb *redis.Client, stream, group, consumer string) *Consumer {
@@ -28,17 +28,17 @@ func NewConsumer(rdb *redis.Client, stream, group, consumer string) *Consumer {
 		stream:   stream,
 		group:    group,
 		consumer: consumer,
-		handlers: make(map[string][]Handler),
+		handlers: make(map[EventType][]Handler),
 	}
 }
 
-func (c *Consumer) handle(eventType string, handler Handler) {
+func (c *Consumer) handle(eventType EventType, handler Handler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers[eventType] = append(c.handlers[eventType], handler)
 }
 
-func (c *Consumer) HandleFunc(eventType string, fn func(ctx context.Context, event Event) error) {
+func (c *Consumer) HandleFunc(eventType EventType, fn func(ctx context.Context, event Event) error) {
 	c.handle(eventType, HandlerFunc(fn))
 }
 

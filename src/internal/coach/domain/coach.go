@@ -2,8 +2,6 @@ package domain
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
@@ -171,18 +169,6 @@ const (
 	DifficultyAdvanced     Difficulty = "ADVANCED"
 )
 
-func NewConversation(id, userID, sessionID string, ctx Context) *Conversation {
-	return &Conversation{
-		ID:        id,
-		UserID:    userID,
-		SessionID: sessionID,
-		Messages:  make([]Message, 0),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Context:   ctx,
-	}
-}
-
 func (c *Conversation) AddMessage(role Role, content string) Message {
 	msg := Message{
 		ID:        generateID(),
@@ -193,40 +179,6 @@ func (c *Conversation) AddMessage(role Role, content string) Message {
 	c.Messages = append(c.Messages, msg)
 	c.UpdatedAt = time.Now()
 	return msg
-}
-
-func (c *Conversation) GetLastMessage() *Message {
-	if len(c.Messages) == 0 {
-		return nil
-	}
-	return &c.Messages[len(c.Messages)-1]
-}
-
-// IsExpired returns true if the conversation has been inactive for too long.
-// Conversations expire after 24 hours of inactivity to manage storage.
-func (c *Conversation) IsExpired() bool {
-	return time.Since(c.UpdatedAt) > 24*time.Hour
-}
-
-// ToPromptContext serializes the conversation and context for LLM consumption.
-func (c *Conversation) ToPromptContext() string {
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Player: Age %d, Position %s, %s-footed\n", c.Context.UserProfile.Age, c.Context.UserProfile.Position, c.Context.UserProfile.Footedness))
-	b.WriteString(fmt.Sprintf("Goals: %s\n", c.Context.UserProfile.Goals))
-	if c.Context.RecentAnalysis != nil {
-		b.WriteString(fmt.Sprintf("Last Match: %.1fkm covered, %.1fkm/h top speed, %.0f%% pass accuracy\n",
-			c.Context.RecentAnalysis.TotalDistance, c.Context.RecentAnalysis.TopSpeed, c.Context.RecentAnalysis.PassAccuracy*100))
-	}
-	b.WriteString(fmt.Sprintf("Training streak: %d days\n", c.Context.TrainingHistory.CurrentStreak))
-	b.WriteString("\nRecent messages:\n")
-	start := 0
-	if len(c.Messages) > 10 {
-		start = len(c.Messages) - 10
-	}
-	for _, msg := range c.Messages[start:] {
-		b.WriteString(fmt.Sprintf("[%s] %s: %s\n", msg.Timestamp.Format("15:04"), msg.Role, msg.Content))
-	}
-	return b.String()
 }
 
 func generateID() string {

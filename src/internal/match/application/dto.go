@@ -1,6 +1,10 @@
 package application
 
-import "time"
+import (
+	"time"
+
+	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+)
 
 type S3Object struct {
 	Key string `json:"key"`
@@ -28,10 +32,10 @@ const (
 )
 
 type MatchRequest struct {
-	ShirtNumber uint          `json:"shirt_number"`
-	Position    string        `json:"position"`
-	Size        uint64        `json:"size"`
-	Metadata    MatchMetadata `json:"metadata"`
+	ShirtNumber uint            `json:"shirt_number"`
+	Position    domain.Position `json:"position"`
+	Size        uint64          `json:"size"`
+	Metadata    MatchMetadata   `json:"metadata"`
 }
 
 type MatchMetadata struct {

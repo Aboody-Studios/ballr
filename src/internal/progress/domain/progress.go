@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/google/uuid"
 )
 
@@ -52,32 +53,13 @@ const (
 )
 
 type EventLog struct {
-	User          domain.User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID        string      `gorm:"index:idx_user_event;not null"`
-	Type          string      `gorm:"index:idx_user_event;not null"`
-	PointsAwarded int64
-	Timestamp     time.Time      `gorm:"index"`
-	Metadata      map[string]any `gorm:"type:jsonb;serializer:json"`
-}
-
-// TODO!: Remove from here or from event.go
-type EventType string
-
-const (
-	EventMatchUploaded     EventType = "MATCH_UPLOADED"
-	EventAnalysisCompleted EventType = "ANALYSIS_COMPLETED"
-	EventDrillCompleted    EventType = "DRILL_COMPLETED"
-	EventCoachInteraction  EventType = "COACH_INTERACTION"
-	EventStreakMaintained  EventType = "STREAK_MAINTAINED"
-)
-
-// PointValue defines points awarded for each event type.
-var PointValue = map[EventType]int{
-	EventMatchUploaded:     50,
-	EventAnalysisCompleted: 100,
-	EventDrillCompleted:    25,
-	EventCoachInteraction:  10,
-	EventStreakMaintained:  5,
+	User           domain.User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID         string           `gorm:"index:idx_user_event;not null"`
+	Type           events.EventType `gorm:"index:idx_user_event;not null"`
+	PointsAwarded  int64
+	IdempotencyKey string         //TODO!: Add unique constraint here
+	Timestamp      time.Time      `gorm:"index"`
+	Metadata       map[string]any `gorm:"type:jsonb;serializer:json"`
 }
 
 // EventSummary represents a single event for the activity feed.
@@ -125,27 +107,6 @@ func NewProgress(id, userID string) *Progress {
 	}
 }
 
-// RecordEvent processes an activity event and updates progress state.
-// This is the primary domain method for gamification logic.
-// Returns points earned from this event.
-func (p *Progress) RecordEvent(eventType EventType) int {
-	points := PointValue[eventType]
-	p.TotalPoints += int64(points)
-
-	now := time.Now()
-	if !isSameDay(p.LastActive, now) {
-		if isConsecutiveDay(p.LastActive, now) {
-			p.CurrentStreak++
-		} else {
-			p.CurrentStreak = 1
-		}
-		p.LastActive = now
-	}
-
-	p.UpdatedAt = now
-	return points
-}
-
 // AddPoints increments the user's total points by the given amount.
 // This is a lower-level operation than RecordEvent - it just adds points without event tracking.
 func (p *Progress) AddPoints(points int64) {
@@ -188,87 +149,6 @@ func (p *Progress) NextStreakExpiry() time.Time {
 	return nextDay
 }
 
-// CanUnlockStreakAchievement checks if the user qualifies for a streak badge.
-func (p *Progress) CanUnlockStreakAchievement() (AchievementType, bool) {
-	switch p.CurrentStreak {
-	case 7:
-		return AchievementTypeStreak7, true
-	case 30:
-		return AchievementTypeStreak30, true
-	default:
-		return "", false
-	}
-}
-
-// AwardAchievement grants an achievement to the user.
-// The achievement is a domain event that should be persisted and possibly published.
-func (p *Progress) AwardAchievement(achievementType AchievementType) *Achievement {
-	points := achievementPoints(achievementType)
-	p.TotalPoints += int64(points)
-
-	return &Achievement{
-		UserID:      p.UserID,
-		Type:        string(achievementType),
-		UnlockedAt:  time.Now(),
-		PointsValue: points,
-	}
-}
-
-// GetLevel returns the current gamification level based on total points.
-// Levels are calculated: Level = floor(sqrt(TotalPoints / 100))
-func (p *Progress) GetLevel() int {
-	if p.TotalPoints < 100 {
-		return 1
-	}
-	level := 1
-	pointsNeeded := int64(100)
-	for p.TotalPoints >= pointsNeeded {
-		level++
-		pointsNeeded = int64(level * level * 100)
-	}
-	return level
-}
-
-// ProgressToNextLevel returns points needed to reach the next level.
-func (p *Progress) ProgressToNextLevel() int64 {
-	currentLevel := p.GetLevel()
-	nextLevelPoints := int64(currentLevel * currentLevel * 100)
-	return nextLevelPoints - p.TotalPoints
-}
-
-// isSameDay returns true if two times are on the same calendar day.
-func isSameDay(t1, t2 time.Time) bool {
-	y1, m1, d1 := t1.Date()
-	y2, m2, d2 := t2.Date()
-	return y1 == y2 && m1 == m2 && d1 == d2
-}
-
-// isConsecutiveDay returns true if t2 is the calendar day after t1.
-func isConsecutiveDay(t1, t2 time.Time) bool {
-	nextDay := t1.Add(24 * time.Hour)
-	return isSameDay(nextDay, t2)
-}
-
-// achievementPoints returns the point value for a specific achievement type.
-func achievementPoints(t AchievementType) int {
-	switch t {
-	case AchievementTypeFirstUpload:
-		return 100
-	case AchievementTypeFirstAnalysis:
-		return 200
-	case AchievementTypeStreakWeek:
-		return 150
-	case AchievementTypeStreakMonth:
-		return 500
-	case AchievementTypeTopPerformer:
-		return 300
-	case AchievementTypeCoachConsult:
-		return 50
-	default:
-		return 0
-	}
-}
-
 // Domain errors for Progress aggregate validation failures.
 var (
 	ErrNegativePoints = &ProgressError{"points cannot be negative"}
@@ -284,8 +164,8 @@ func (e *ProgressError) Error() string { return e.Message }
 
 // CalculatePoints returns the points value for a given event type.
 // This is a helper function used by the application service.
-func CalculatePoints(eventType EventType, metadata EventMetadata) int64 {
-	points := int64(PointValue[eventType])
+func CalculatePoints(eventType events.EventType) int64 {
+	points := int64(events.PointValue[eventType])
 	return points
 }
 
@@ -294,10 +174,10 @@ func CalculatePoints(eventType EventType, metadata EventMetadata) int64 {
 type EventMetadata map[string]any
 
 // NewEventLog creates a new event log entry.
-func NewEventLog(userID string, eventType EventType, points int64, metadata EventMetadata) *EventLog {
+func NewEventLog(userID string, eventType events.EventType, points int64, metadata EventMetadata) *EventLog {
 	return &EventLog{
 		UserID:        userID,
-		Type:          string(eventType),
+		Type:          eventType,
 		PointsAwarded: points,
 		Timestamp:     time.Now(),
 		Metadata:      metadata,

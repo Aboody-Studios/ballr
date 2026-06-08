@@ -8,6 +8,7 @@ import (
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
+	"github.com/google/uuid"
 )
 
 type UploadService struct {
@@ -87,16 +88,28 @@ func (s *UploadService) StartMatchProcessingWorflow(ctx context.Context, s3Key s
 		return fmt.Errorf("save match: %w", err)
 	}
 
-	if err := s.eventPublisher.PublishEvent(ctx, match.UserID, events.EventMatchUploaded, nil); err != nil {
+	matchUploaded := events.Event{
+		ID:     uuid.NewString(),
+		Type:   events.EventMatchUploaded,
+		UserID: match.UserID,
+	}
+
+	if err := s.eventPublisher.PublishEvent(ctx, matchUploaded); err != nil {
 		log.Printf("failed to publish event: %w", err)
 	}
-
-	eventMap := map[string]any{
-		"match_id":  match.ID,
+	metadata := map[string]any{
 		"video_url": match.VideoURL,
+		"match_id":  matchID,
 	}
 
-	if err := s.eventPublisher.PublishEvent(ctx, match.UserID, events.EventAnalysisStart, eventMap); err != nil {
+	startAnalysis := events.Event{
+		ID:       uuid.NewString(),
+		Type:     events.EventAnalysisStart,
+		UserID:   match.UserID,
+		Metadata: metadata,
+	}
+
+	if err := s.eventPublisher.PublishEvent(ctx, startAnalysis); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 

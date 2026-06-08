@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -22,14 +20,7 @@ func NewRedisPublisher(rdb *redis.Client) *RedisPublisher {
 	}
 }
 
-func (p *RedisPublisher) PublishEvent(ctx context.Context, userID string, eventType string, metadata map[string]any) error {
-	event := Event{
-		ID:        uuid.New().String(),
-		Type:      eventType,
-		UserID:    userID,
-		Timestamp: time.Now().UTC(),
-		Metadata:  metadata,
-	}
+func (p *RedisPublisher) PublishEvent(ctx context.Context, event Event) error {
 
 	data, err := json.Marshal(event)
 	if err != nil {

@@ -3,22 +3,31 @@ package events
 import "time"
 
 type Event struct {
-	ID        string         `json:"id"`
-	Type      string         `json:"type"`
-	UserID    string         `json:"user_id"`
-	Timestamp time.Time      `json:"timestamp"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	ID        string    `json:"id"`
+	Type      EventType `json:"type"`
+	UserID    string    `json:"user_id"`
+	Metadata  map[string]any
+	Timestamp time.Time `json:"timestamp"`
 }
 
-// TODO!: Remove from here or from progress.go
+type EventType string
+
 const (
-	EventMatchUploaded     = "MATCH_UPLOADED"
-	EventAnalysisCompleted = "ANALYSIS_COMPLETED"
-	EventAnalysisStart     = "ANALYSIS_START"
-	EventCoachInteraction  = "COACH_INTERACTION"
-	EventDrillCompleted    = "DRILL_COMPLETED"
-	EventStreakMaintained  = "STREAK_MAINTAINED"
+	EventMatchUploaded     EventType = "MATCH_UPLOADED"
+	EventAnalysisCompleted EventType = "ANALYSIS_COMPLETED"
+	EventDrillCompleted    EventType = "DRILL_COMPLETED"
+	EventCoachInteraction  EventType = "COACH_INTERACTION"
+	EventStreakMaintained  EventType = "STREAK_MAINTAINED"
+	EventAnalysisStart     EventType = "ANALYSIS_START"
 )
+
+var PointValue = map[EventType]int{
+	EventMatchUploaded:     50,
+	EventAnalysisCompleted: 100,
+	EventDrillCompleted:    25,
+	EventCoachInteraction:  10,
+	EventStreakMaintained:  5,
+}
 
 const (
 	DefaultStream    = "ballr:events"

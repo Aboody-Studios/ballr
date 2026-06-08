@@ -51,7 +51,7 @@ func (r *PostgresAnalysisRepository) AddEvent(ctx context.Context, matchID strin
 	return tx.Error
 }
 
-func (r *PostgresMatchRepository) UpdateAnalysisID(ctx context.Context, matchID string, analysisID string) error {
+func (r *PostgresAnalysisRepository) UpdateAnalysisID(ctx context.Context, matchID string, analysisID string) error {
 	tx := r.DB.Model(&domain.AnalysisResult{}).Where("match_id = ?", matchID).Update("id", analysisID)
 	return tx.Error
 }

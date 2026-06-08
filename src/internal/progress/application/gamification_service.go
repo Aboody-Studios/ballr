@@ -3,9 +3,11 @@ package application
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/progress/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
 // GamificationService handles progress tracking, points calculation,
@@ -35,17 +37,18 @@ func NewGamificationService(
 
 // ProcessEvent handles a gamification event and calculates points/achievements.
 // This is the core entry point for the event-based gamification system.
-func (s *GamificationService) ProcessEvent(ctx context.Context, userID string, eventType domain.EventType, metadata domain.EventMetadata) error {
+// TODO!: Pass the whole Event struct instead of fields
+func (s *GamificationService) ProcessEvent(ctx context.Context, userID string, eventType events.EventType, eventID string) error {
 	progress, err := s.progressRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		id := fmt.Sprintf("prog_%d", time.Now().UnixNano())
 		progress = domain.NewProgress(id, userID)
 	}
 
-	points := domain.CalculatePoints(eventType, metadata)
+	points := domain.CalculatePoints(eventType)
 
-	isActiveDay := eventType == domain.EventMatchUploaded ||
-		eventType == domain.EventDrillCompleted
+	isActiveDay := eventType == events.EventMatchUploaded ||
+		eventType == events.EventDrillCompleted
 	if isActiveDay {
 		progress.UpdateStreak(time.Now())
 	}
@@ -58,7 +61,7 @@ func (s *GamificationService) ProcessEvent(ctx context.Context, userID string, e
 
 	event := domain.NewEventLog(userID, eventType, points, metadata)
 	if err := s.eventLogRepo.Save(ctx, event); err != nil {
-		// Event logging is observability, not business-critical
+
 	}
 
 	newAchievements, err := s.checkAchievements(ctx, userID, progress, eventType)
@@ -84,7 +87,7 @@ func (s *GamificationService) ProcessEvent(ctx context.Context, userID string, e
 
 // checkAchievements evaluates if user qualifies for any new achievements.
 // Checks against all achievement criteria and returns newly unlocked achievements.
-func (s *GamificationService) checkAchievements(ctx context.Context, userID string, progress *domain.Progress, recentEvent domain.EventType) ([]*domain.Achievement, error) {
+func (s *GamificationService) checkAchievements(ctx context.Context, userID string, progress *domain.Progress, recentEvent events.EventType) ([]*domain.Achievement, error) {
 	var newAchievements []*domain.Achievement
 
 	existingAchievements, err := s.achievementRepo.FindByUserID(ctx, userID)
@@ -105,7 +108,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 		{
 			domain.AchievementTypeFirstUpload,
 			func(p *domain.Progress, existing []domain.AchievementType) bool {
-				return recentEvent == domain.EventMatchUploaded &&
+				return recentEvent == events.EventMatchUploaded &&
 					!contains(existing, domain.AchievementTypeFirstUpload)
 			},
 			100,
@@ -137,7 +140,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 		{
 			domain.AchievementTypeDrillCompleter,
 			func(p *domain.Progress, existing []domain.AchievementType) bool {
-				return recentEvent == domain.EventDrillCompleted &&
+				return recentEvent == events.EventDrillCompleted &&
 					!contains(existing, domain.AchievementTypeDrillCompleter)
 			},
 			250,

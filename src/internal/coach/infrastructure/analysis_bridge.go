@@ -66,6 +66,7 @@ func (b *CoachAnalysisBridge) GetMatchHistory(ctx context.Context, userID string
 	return result, nil
 }
 
+// TODO!: Use AnalysisResult here instead of Match
 func matchToInsight(m *analysisdomain.Match) *coachdomain.MatchInsight {
 	insight := &coachdomain.MatchInsight{
 		MatchID:     m.ID,

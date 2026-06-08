@@ -127,8 +127,8 @@ func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *
 		"--video", videoPath,
 		"--match-id", job.MatchID,
 		"--user-id", job.UserID,
-		"--shirt-number", fmt.Sprintf("%d", job.ShirtNumber),
-		"--position", job.Position,
+		"--shirt-number", fmt.Sprintf("%s", job.ShirtNumber),
+		"--position", string(job.Position),
 	)
 
 	var stdout, stderr bytes.Buffer
@@ -165,6 +165,8 @@ func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *
 	if err := w.matchRepo.UpdateStatus(ctx, job.MatchID, domain.MatchStatusCompleted); err != nil {
 		return fmt.Errorf("update match status: %w", err)
 	}
+
+	//TODO!: Create EventAnalysisCompleted struct
 
 	if err := w.eventPublisher.PublishEvent(ctx, job.UserID, events.EventAnalysisCompleted, nil); err != nil {
 		log.Warn("failed to publish completion event", "error", err)

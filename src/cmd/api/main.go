@@ -21,7 +21,6 @@ import (
 	matchhandlers "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
-	progressdomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	progresshttp "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/http"
 	progressinfrastructure "github.com/Aboody-Studios/ballr/src/internal/progress/infrastructure"
 	shareddelivery "github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
@@ -112,20 +111,22 @@ func main() {
 		if !ok {
 			return fmt.Errorf("missing match_id")
 		}
+
 		videoURL, ok := event.Metadata["video_url"].(string)
 		if !ok {
 			return fmt.Errorf("missing video_url")
 		}
+		gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
 		return analysisService.StartAnalysis(ctx, matchID, videoURL)
 	})
 	eventConsumer.HandleFunc(events.EventMatchUploaded, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event.UserID, progressdomain.EventType(event.Type), progressdomain.EventMetadata(event.Metadata))
+		return gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
 	})
-	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, e events.Event) error {
-		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
+	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, event events.Event) error {
+		return gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
 	})
-	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, e events.Event) error {
-		return gamificationService.ProcessEvent(ctx, e.UserID, progressdomain.EventType(e.Type), progressdomain.EventMetadata(e.Metadata))
+	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, event events.Event) error {
+		return gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
 	})
 
 	consumerCtx, stopConsumer := context.WithCancel(context.Background())

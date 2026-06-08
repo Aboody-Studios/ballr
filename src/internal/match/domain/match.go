@@ -9,7 +9,6 @@ import (
 // I want to admit that go really looks so good and makes me feel like i was fighting something in rust and all those structs are insane
 // thanks google
 
-// MatchStatus represents the processing state of a match video.
 type MatchStatus string
 
 const (
@@ -22,20 +21,19 @@ const (
 // Match is the aggregate root for the Analysis bounded context.
 // TODO!: Remove gorm
 type Match struct {
-	ID             string        `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	User           domain.User   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID         string        `gorm:"index;not null"`
-	ShirtNumber    uint          `gorm:"not null"`
-	PositionPlayed string        `gorm:"type:varchar(20)"`
-	VideoURL       string        `gorm:"type:varchar(100)"`
-	Status         MatchStatus   `gorm:"type:varchar(20);index;default:UPLOADING"`
-	AnalysisFlag   bool          `gorm:"default:false"`
-	CreatedAt      time.Time     `gorm:"autoCreateTime"`
-	UpdatedAt      time.Time     `gorm:"autoUpdateTime"`
-	Metadata       MatchMetadata `gorm:"type:jsonb;serializer:json"`
+	ID             string          `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	User           domain.User     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID         string          `gorm:"index;not null"`
+	ShirtNumber    uint            `gorm:"not null"`
+	PositionPlayed domain.Position `gorm:"type:varchar(20)"`
+	VideoURL       string          `gorm:"type:varchar(100)"`
+	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
+	AnalysisFlag   bool            `gorm:"default:false"`
+	CreatedAt      time.Time       `gorm:"autoCreateTime"`
+	UpdatedAt      time.Time       `gorm:"autoUpdateTime"`
+	Metadata       MatchMetadata   `gorm:"type:jsonb;serializer:json"`
 }
 
-// MatchMetadata contains flexible match information.
 type MatchMetadata struct {
 	MatchDate time.Time `json:"match_date"`
 	Duration  int       `json:"duration_seconds"`
@@ -43,8 +41,8 @@ type MatchMetadata struct {
 	Location  string    `json:"location,omitempty"`
 }
 
-// NewMatch creates a new match aggregate in UPLOADING state.
-func NewMatch(id, userID string, shirtNumber uint, positionPlayed string, metadata MatchMetadata) (*Match, error) {
+// Test only function
+func NewMatch(id, userID string, shirtNumber uint, positionPlayed domain.Position, metadata MatchMetadata) (*Match, error) {
 	match := &Match{
 		ID:             id,
 		UserID:         userID,
@@ -62,7 +60,6 @@ func NewMatch(id, userID string, shirtNumber uint, positionPlayed string, metada
 	return match, nil
 }
 
-// Validate checks domain invariants for the Match aggregate.
 func (m *Match) Validate() error {
 	if m.ID == "" {
 		return ErrInvalidMatchID
@@ -83,7 +80,6 @@ func (m *Match) Validate() error {
 	return nil
 }
 
-// MarkUploadComplete transitions from UPLOADING to PROCESSING.
 func (m *Match) UpdateMatchStatusToProcessing(videoURL string) error {
 	if m.Status != MatchStatusUploading {
 		return ErrInvalidStatusTransition
