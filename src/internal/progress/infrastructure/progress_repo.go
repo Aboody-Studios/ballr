@@ -2,7 +2,6 @@ package infrastructure
 
 import (
 	"context"
-	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	"gorm.io/gorm"
@@ -29,22 +28,6 @@ func (r *PostgresProgressRepository) AddPoints(ctx context.Context, userID strin
 	tx := r.DB.Model(&domain.Progress{}).Where("user_id = ?", userID).
 		Update("total_points", gorm.Expr("total_points + ?", points))
 	return tx.Error
-}
-
-func (r *PostgresProgressRepository) UpdateStreak(ctx context.Context, userID string, activeDate string) error {
-	progress, err := r.FindByUserID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	parsed, err := time.Parse(time.RFC3339, activeDate)
-	if err != nil {
-		parsed, err = time.Parse("2006-01-02", activeDate)
-		if err != nil {
-			return err
-		}
-	}
-	progress.UpdateStreak(parsed)
-	return r.Save(ctx, progress)
 }
 
 type progressLeaderboardRow struct {

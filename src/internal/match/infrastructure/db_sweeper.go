@@ -47,7 +47,6 @@ func (swpr *Sweeper) SweepStuckMatches(ctx context.Context) error {
 				}
 
 				//TODO!: Create EventAnalysisStart struct
-
 				if err := swpr.EventPublisher.PublishEvent(ctx, match.UserID, events.EventAnalysisStart, eventMap); err != nil {
 					// Publish failed; revert claim so another sweeper can retry later.
 					if err2 := swpr.MatchRepo.UnclaimMatch(ctx, match.ID); err2 != nil {

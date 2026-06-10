@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
+type TxKey struct{}
+
 func InitiatePostgres() (*gorm.DB, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

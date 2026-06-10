@@ -53,13 +53,13 @@ const (
 )
 
 type EventLog struct {
-	User           domain.User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID         string           `gorm:"index:idx_user_event;not null"`
-	Type           events.EventType `gorm:"index:idx_user_event;not null"`
-	PointsAwarded  int64
-	IdempotencyKey string         //TODO!: Add unique constraint here
-	Timestamp      time.Time      `gorm:"index"`
-	Metadata       map[string]any `gorm:"type:jsonb;serializer:json"`
+	User          domain.User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID        string           `gorm:"index:idx_user_event;not null"`
+	Type          events.EventType `gorm:"index:idx_user_event;not null"`
+	PointsAwarded int64
+	ID            string         //TODO!: Add unique constraint here
+	Timestamp     time.Time      `gorm:"index"`
+	Metadata      map[string]any `gorm:"type:jsonb;serializer:json"`
 }
 
 // EventSummary represents a single event for the activity feed.
@@ -121,17 +121,17 @@ func (p *Progress) AddPoints(points int64) {
 // If the date is the same as LastActive, does nothing.
 // If the date is not consecutive, resets streak to 1.
 func (p *Progress) UpdateStreak(activityDate time.Time) {
-	y1, m1, d1 := p.LastActive.Date()
-	y2, m2, d2 := activityDate.Date()
+	lastActiveYear, lastActiveMonth, LastActiveDay := p.LastActive.Date()
+	currentActivityYear, currentActivityMonth, currentActivityDay := activityDate.Date()
 
-	if y1 == y2 && m1 == m2 && d1 == d2 {
+	if lastActiveYear == currentActivityYear && lastActiveMonth == currentActivityMonth && LastActiveDay == currentActivityDay {
 		return
 	}
 
-	nextDay := time.Date(y1, m1, d1, 0, 0, 0, 0, p.LastActive.Location()).Add(24 * time.Hour)
+	nextDay := time.Date(lastActiveYear, lastActiveMonth, LastActiveDay, 0, 0, 0, 0, p.LastActive.Location()).Add(24 * time.Hour)
 	yNext, mNext, dNext := nextDay.Date()
 
-	if y2 == yNext && m2 == mNext && d2 == dNext {
+	if currentActivityYear == yNext && currentActivityMonth == mNext && currentActivityDay == dNext {
 		p.CurrentStreak++
 	} else {
 		p.CurrentStreak = 1
@@ -173,14 +173,14 @@ func CalculatePoints(eventType events.EventType) int64 {
 // Used for potential bonus point calculations.
 type EventMetadata map[string]any
 
-// NewEventLog creates a new event log entry.
-func NewEventLog(userID string, eventType events.EventType, points int64, metadata EventMetadata) *EventLog {
+func NewEventLog(event events.Event, points int64) *EventLog {
 	return &EventLog{
-		UserID:        userID,
-		Type:          eventType,
+		UserID:        event.UserID,
+		ID:            uuid.NewString(),
+		Type:          event.Type,
 		PointsAwarded: points,
 		Timestamp:     time.Now(),
-		Metadata:      metadata,
+		Metadata:      event.Metadata,
 	}
 }
 

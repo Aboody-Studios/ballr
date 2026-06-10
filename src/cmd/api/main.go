@@ -116,17 +116,20 @@ func main() {
 		if !ok {
 			return fmt.Errorf("missing video_url")
 		}
-		gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
+		gamificationService.ProcessEvent(ctx, event)
 		return analysisService.StartAnalysis(ctx, matchID, videoURL)
 	})
 	eventConsumer.HandleFunc(events.EventMatchUploaded, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
+		return gamificationService.ProcessEvent(ctx, event)
 	})
 	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
+		return gamificationService.ProcessEvent(ctx, event)
 	})
 	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event.UserID, event.Type, event.ID)
+		return gamificationService.ProcessEvent(ctx, event)
+	})
+	eventConsumer.HandleFunc(events.EventAchievementCheckRequested, func(ctx context.Context, event events.Event) error {
+		return gamificationService.CheckAndAwardAchievements(ctx, event)
 	})
 
 	consumerCtx, stopConsumer := context.WithCancel(context.Background())

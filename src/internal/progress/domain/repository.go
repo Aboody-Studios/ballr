@@ -15,10 +15,6 @@ type ProgressRepository interface {
 	// AddPoints increments the user's total points by the given amount.
 	AddPoints(ctx context.Context, userID string, points int64) error
 
-	// UpdateStreak updates the current streak and last active date.
-	// Streak logic: if last_active was yesterday, increment streak; if older, reset to 1.
-	UpdateStreak(ctx context.Context, userID string, activeDate string) error
-
 	// GetLeaderboard retrieves top users by points for the leaderboard.
 	GetLeaderboard(ctx context.Context, limit int) ([]*LeaderboardEntry, error)
 }
@@ -61,6 +57,10 @@ type LeaderboardRepository interface {
 
 	// GetTopPlayers retrieves the top players for the leaderboard.
 	GetTopPlayers(ctx context.Context, offset, limit int) ([]LeaderboardEntry, error)
+}
+
+type TransactionManager interface {
+	Transact(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 // ErrAchievementNotFound is returned when an achievement is not found.

@@ -3,21 +3,23 @@ package application
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
+	"github.com/google/uuid"
 )
 
 // GamificationService handles progress tracking, points calculation,
 // achievements, streaks, and leaderboards for the Progress bounded context.
 // Something as infra for the orb app aboody showed us
 type GamificationService struct {
-	progressRepo    domain.ProgressRepository
-	achievementRepo domain.AchievementRepository
-	eventLogRepo    domain.EventLogRepository
-	leaderboardRepo domain.LeaderboardRepository
+	progressRepo       domain.ProgressRepository
+	achievementRepo    domain.AchievementRepository
+	eventLogRepo       domain.EventLogRepository
+	leaderboardRepo    domain.LeaderboardRepository
+	TransactionManager domain.TransactionManager
+	EventPublisher     events.Publisher
 }
 
 // NewGamificationService creates a new gamification service with required dependencies.
@@ -37,49 +39,86 @@ func NewGamificationService(
 
 // ProcessEvent handles a gamification event and calculates points/achievements.
 // This is the core entry point for the event-based gamification system.
-// TODO!: Pass the whole Event struct instead of fields
-func (s *GamificationService) ProcessEvent(ctx context.Context, userID string, eventType events.EventType, eventID string) error {
-	progress, err := s.progressRepo.FindByUserID(ctx, userID)
-	if err != nil {
-		id := fmt.Sprintf("prog_%d", time.Now().UnixNano())
-		progress = domain.NewProgress(id, userID)
-	}
+func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Event) error {
+	var progress *domain.Progress
 
-	points := domain.CalculatePoints(eventType)
+	if err := gs.TransactionManager.Transact(ctx, func(ctx context.Context) error {
+		innerScopeProgress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
+		if err != nil {
+			id := fmt.Sprintf("prog_%d", time.Now().UnixNano())
+			innerScopeProgress = domain.NewProgress(id, event.UserID)
+		}
+		progress = innerScopeProgress
 
-	isActiveDay := eventType == events.EventMatchUploaded ||
-		eventType == events.EventDrillCompleted
-	if isActiveDay {
-		progress.UpdateStreak(time.Now())
-	}
+		points := domain.CalculatePoints(event.Type)
 
-	progress.AddPoints(points)
-
-	if err := s.progressRepo.Save(ctx, progress); err != nil {
-		return fmt.Errorf("failed to save progress: %w", err)
-	}
-
-	event := domain.NewEventLog(userID, eventType, points, metadata)
-	if err := s.eventLogRepo.Save(ctx, event); err != nil {
-
-	}
-
-	newAchievements, err := s.checkAchievements(ctx, userID, progress, eventType)
-	if err != nil {
-		return fmt.Errorf("failed to check achievements: %w", err)
-	}
-
-	for _, achievement := range newAchievements {
-		if err := s.achievementRepo.Save(ctx, achievement); err != nil {
-			return fmt.Errorf("failed to save achievement: %w", err)
+		isActiveDay := event.Type == events.EventMatchUploaded ||
+			event.Type == events.EventDrillCompleted
+		if isActiveDay {
+			progress.UpdateStreak(time.Now())
 		}
 
-		bonusPoints := achievement.PointValue()
-		progress.AddPoints(bonusPoints)
+		progress.AddPoints(points)
+
+		if err := gs.progressRepo.Save(ctx, progress); err != nil {
+			return fmt.Errorf("failed to save progress: %w", err)
+		}
+
+		eventLog := domain.NewEventLog(event, points)
+		if err := gs.eventLogRepo.Save(ctx, eventLog); err != nil {
+			return fmt.Errorf("failed to save event log: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("Transaction failed: %w", err)
 	}
 
-	if err := s.leaderboardRepo.UpdateScore(ctx, userID, progress.TotalPoints); err != nil {
-		// Non-critical: leaderboard can be eventually consistent
+	checkAchievementsEvent := events.Event{
+		ID:        uuid.NewString(),
+		Type:      events.EventAchievementCheckRequested,
+		UserID:    event.UserID,
+		Timestamp: time.Now(),
+	}
+	gs.EventPublisher.PublishEvent(ctx, checkAchievementsEvent)
+
+	//TODO!: Implement leaderboard using Redis and not PostgreSQL
+	if err := gs.leaderboardRepo.UpdateScore(ctx, event.UserID, progress.TotalPoints); err != nil {
+		fmt.Errorf("failed to update score: %w", err)
+	}
+
+	return nil
+}
+
+func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, event events.Event) error {
+	if err := gs.TransactionManager.Transact(ctx, func(ctx context.Context) error {
+
+		progress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
+		if err != nil {
+			return fmt.Errorf("Failed to get progress: %w", err)
+		}
+
+		newAchievements, err := gs.checkAchievements(ctx, event.UserID, progress, event.Type)
+		if err != nil {
+			return fmt.Errorf("failed to check achievements: %w", err)
+		}
+
+		for _, achievement := range newAchievements {
+			if err := gs.achievementRepo.Save(ctx, achievement); err != nil {
+				return fmt.Errorf("failed to save achievement: %w", err)
+			}
+
+			bonusPoints := achievement.PointValue()
+			progress.AddPoints(bonusPoints)
+		}
+
+		if err := gs.progressRepo.Save(ctx, progress); err != nil {
+			return fmt.Errorf("failed to save progress: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return nil

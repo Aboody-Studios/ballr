@@ -13,12 +13,13 @@ type Event struct {
 type EventType string
 
 const (
-	EventMatchUploaded     EventType = "MATCH_UPLOADED"
-	EventAnalysisCompleted EventType = "ANALYSIS_COMPLETED"
-	EventDrillCompleted    EventType = "DRILL_COMPLETED"
-	EventCoachInteraction  EventType = "COACH_INTERACTION"
-	EventStreakMaintained  EventType = "STREAK_MAINTAINED"
-	EventAnalysisStart     EventType = "ANALYSIS_START"
+	EventMatchUploaded             EventType = "MATCH_UPLOADED"
+	EventAnalysisCompleted         EventType = "ANALYSIS_COMPLETED"
+	EventDrillCompleted            EventType = "DRILL_COMPLETED"
+	EventCoachInteraction          EventType = "COACH_INTERACTION"
+	EventStreakMaintained          EventType = "STREAK_MAINTAINED"
+	EventAnalysisStart             EventType = "ANALYSIS_START"
+	EventAchievementCheckRequested EventType = "CHECK_ACHIEVEMENT"
 )
 
 var PointValue = map[EventType]int{
