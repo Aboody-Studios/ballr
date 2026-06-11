@@ -39,6 +39,7 @@ func NewGamificationService(
 
 // ProcessEvent handles a gamification event and calculates points/achievements.
 // This is the core entry point for the event-based gamification system.
+// TODO!: Make this function only for processing events with points.
 func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Event) error {
 	var progress *domain.Progress
 
@@ -50,15 +51,13 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 		}
 		progress = innerScopeProgress
 
-		points := domain.CalculatePoints(event.Type)
+		points, ok := domain.CalculatePoints(event.Type)
 
-		isActiveDay := event.Type == events.EventMatchUploaded ||
-			event.Type == events.EventDrillCompleted
-		if isActiveDay {
-			progress.UpdateStreak(time.Now())
+		if ok {
+			timeNow := time.Now()
+			progress.UpdateStreak(timeNow)
+			progress.AddPoints(points, timeNow)
 		}
-
-		progress.AddPoints(points)
 
 		if err := gs.progressRepo.Save(ctx, progress); err != nil {
 			return fmt.Errorf("failed to save progress: %w", err)
@@ -74,6 +73,7 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 		return fmt.Errorf("Transaction failed: %w", err)
 	}
 
+	// Publish an event for checking if rewarding an achievement to the user is applicable or not.
 	checkAchievementsEvent := events.Event{
 		ID:        uuid.NewString(),
 		Type:      events.EventAchievementCheckRequested,
@@ -109,7 +109,7 @@ func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, ev
 			}
 
 			bonusPoints := achievement.PointValue()
-			progress.AddPoints(bonusPoints)
+			progress.AddPoints(bonusPoints, time.Now())
 		}
 
 		if err := gs.progressRepo.Save(ctx, progress); err != nil {
@@ -142,7 +142,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 	criteria := []struct {
 		typ     domain.AchievementType
 		checker func(*domain.Progress, []domain.AchievementType) bool
-		points  int64
+		points  int
 	}{
 		{
 			domain.AchievementTypeFirstUpload,
@@ -220,7 +220,7 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 		CurrentStreak:    progress.CurrentStreak,
 		LastActive:       progress.LastActive,
 		NextStreakExpiry: progress.NextStreakExpiry(),
-		AchievementCount: int64(len(achievements)),
+		AchievementCount: len(achievements),
 		RecentEvents:     make([]domain.EventSummary, 0, len(recentEvents)),
 	}
 

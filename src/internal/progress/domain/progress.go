@@ -14,7 +14,7 @@ import (
 type Progress struct {
 	ID            string `gorm:"primaryKey"`
 	UserID        string `gorm:"uniqueIndex;not null"`
-	TotalPoints   int64  `gorm:"default:0"`
+	TotalPoints   int    `gorm:"default:0"`
 	CurrentStreak int    `gorm:"default:0"`
 	LastActive    time.Time
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
@@ -28,10 +28,10 @@ type Achievement struct {
 	ID          string   `gorm:"primaryKey"`
 	Progress    Progress `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	progressID  string
-	User        domain.User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID      string      `gorm:"uniqueIndex:idx_user_achievement;not null"`
-	Type        string      `gorm:"uniqueIndex:idx_user_achievement;not null"`
-	UnlockedAt  time.Time   `gorm:"autoCreateTime"`
+	User        domain.User     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserID      string          `gorm:"uniqueIndex:idx_user_achievement;not null"`
+	Type        AchievementType `gorm:"uniqueIndex:idx_user_achievement;not null"`
+	UnlockedAt  time.Time       `gorm:"autoCreateTime"`
 	PointsValue int
 }
 
@@ -56,8 +56,8 @@ type EventLog struct {
 	User          domain.User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserID        string           `gorm:"index:idx_user_event;not null"`
 	Type          events.EventType `gorm:"index:idx_user_event;not null"`
-	PointsAwarded int64
-	ID            string         //TODO!: Add unique constraint here
+	PointsAwarded int
+	ID            string         `gorm:"primaryKey"`
 	Timestamp     time.Time      `gorm:"index"`
 	Metadata      map[string]any `gorm:"type:jsonb;serializer:json"`
 }
@@ -65,7 +65,7 @@ type EventLog struct {
 // EventSummary represents a single event for the activity feed.
 type EventSummary struct {
 	Type      string
-	Points    int64
+	Points    int
 	Timestamp time.Time
 }
 
@@ -74,11 +74,11 @@ type EventSummary struct {
 type ProgressSummary struct {
 	UserID           string
 	DisplayName      string
-	TotalPoints      int64
+	TotalPoints      int
 	CurrentStreak    int
 	LastActive       time.Time
 	NextStreakExpiry time.Time
-	AchievementCount int64
+	AchievementCount int
 	RecentEvents     []EventSummary
 	Rank             int
 }
@@ -88,7 +88,7 @@ type LeaderboardEntry struct {
 	Rank        int
 	UserID      string
 	DisplayName string
-	TotalPoints int64
+	TotalPoints int
 	Streak      int
 }
 
@@ -109,11 +109,9 @@ func NewProgress(id, userID string) *Progress {
 
 // AddPoints increments the user's total points by the given amount.
 // This is a lower-level operation than RecordEvent - it just adds points without event tracking.
-func (p *Progress) AddPoints(points int64) {
-	if points > 0 {
-		p.TotalPoints += points
-		p.UpdatedAt = time.Now()
-	}
+func (p *Progress) AddPoints(points int, t time.Time) {
+	p.TotalPoints += points
+	p.UpdatedAt = t
 }
 
 // UpdateStreak updates the user's streak based on activity date.
@@ -164,16 +162,16 @@ func (e *ProgressError) Error() string { return e.Message }
 
 // CalculatePoints returns the points value for a given event type.
 // This is a helper function used by the application service.
-func CalculatePoints(eventType events.EventType) int64 {
-	points := int64(events.PointValue[eventType])
-	return points
+func CalculatePoints(eventType events.EventType) (int, bool) {
+	points, ok := events.PointValue[eventType]
+	return points, ok
 }
 
 // EventMetadata contains additional data about an event.
 // Used for potential bonus point calculations.
 type EventMetadata map[string]any
 
-func NewEventLog(event events.Event, points int64) *EventLog {
+func NewEventLog(event events.Event, points int) *EventLog {
 	return &EventLog{
 		UserID:        event.UserID,
 		ID:            uuid.NewString(),
@@ -185,19 +183,19 @@ func NewEventLog(event events.Event, points int64) *EventLog {
 }
 
 // NewAchievement creates a new achievement for a user.
-func NewAchievement(userID string, achievementType AchievementType, points int64) *Achievement {
+func NewAchievement(userID string, achievementType AchievementType, points int) *Achievement {
 	return &Achievement{
 		ID:          generateID(),
 		UserID:      userID,
-		Type:        string(achievementType),
+		Type:        achievementType,
 		UnlockedAt:  time.Now(),
-		PointsValue: int(points),
+		PointsValue: points,
 	}
 }
 
 // PointValue returns the point value for an achievement.
-func (a *Achievement) PointValue() int64 {
-	return int64(a.PointsValue)
+func (a *Achievement) PointValue() int {
+	return a.PointsValue
 }
 
 func generateID() string {

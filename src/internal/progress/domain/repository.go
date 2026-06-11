@@ -53,7 +53,7 @@ type EventLogRepository interface {
 // LeaderboardRepository defines the contract for leaderboard operations.
 type LeaderboardRepository interface {
 	// UpdateScore updates a user's score on the leaderboard.
-	UpdateScore(ctx context.Context, userID string, points int64) error
+	UpdateScore(ctx context.Context, userID string, points int) error
 
 	// GetTopPlayers retrieves the top players for the leaderboard.
 	GetTopPlayers(ctx context.Context, offset, limit int) ([]LeaderboardEntry, error)

@@ -12,22 +12,22 @@ type Event struct {
 
 type EventType string
 
+// TODO!: Add EventStreakMultipleOf7
 const (
 	EventMatchUploaded             EventType = "MATCH_UPLOADED"
 	EventAnalysisCompleted         EventType = "ANALYSIS_COMPLETED"
 	EventDrillCompleted            EventType = "DRILL_COMPLETED"
 	EventCoachInteraction          EventType = "COACH_INTERACTION"
-	EventStreakMaintained          EventType = "STREAK_MAINTAINED"
 	EventAnalysisStart             EventType = "ANALYSIS_START"
 	EventAchievementCheckRequested EventType = "CHECK_ACHIEVEMENT"
 )
 
+// Either use PointValue or create a new array array for events with points to check whether event is considered an activity or not
 var PointValue = map[EventType]int{
 	EventMatchUploaded:     50,
 	EventAnalysisCompleted: 100,
 	EventDrillCompleted:    25,
 	EventCoachInteraction:  10,
-	EventStreakMaintained:  5,
 }
 
 const (

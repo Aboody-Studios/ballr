@@ -11,7 +11,7 @@ type PostgresLeaderboardRepository struct {
 	*gorm.DB
 }
 
-func (r *PostgresLeaderboardRepository) UpdateScore(ctx context.Context, userID string, points int64) error {
+func (r *PostgresLeaderboardRepository) UpdateScore(ctx context.Context, userID string, points int) error {
 	tx := r.DB.Model(&domain.Progress{}).Where("user_id = ?", userID).
 		Update("total_points", points)
 	return tx.Error
@@ -19,7 +19,7 @@ func (r *PostgresLeaderboardRepository) UpdateScore(ctx context.Context, userID 
 
 type leaderboardTopPlayerRow struct {
 	UserID        string
-	TotalPoints   int64
+	TotalPoints   int
 	CurrentStreak int
 }
 

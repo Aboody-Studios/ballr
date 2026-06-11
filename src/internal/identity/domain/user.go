@@ -40,6 +40,7 @@ type User struct {
 	Footedness    Footedness
 	Goals         string
 	CreatedAt     time.Time
+	TrainingDays  []time.Weekday
 }
 
 type JWTCustomClaims struct {

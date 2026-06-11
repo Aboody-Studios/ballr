@@ -38,6 +38,8 @@ func (h *IdentityHandler) CompleteProfileHandler(echoCtx *echo.Context) error {
 	}
 
 	var req application.OnboardingRequest
+	// TODO!: Validate the weekdays strings here and not in the service layer.
+	// Differentiate between time.Sunday and zero value for integers correctly.
 	if err := echoCtx.Bind(&req); err != nil {
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON format"})
 	}

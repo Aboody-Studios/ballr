@@ -116,11 +116,17 @@ func (s *Service) CompleteProfile(ctx context.Context, userID string, req *Onboa
 		return err
 	}
 
+	weekdayNums := []time.Weekday{}
+	for _, day := range req.TrainingDays {
+		weekdayNums = append(weekdayNums, WeekDayTranslation[day])
+	}
+
 	user.FullName = req.FullName
 	user.BirthDate = req.BirthDate
 	user.Position = req.Position
 	user.Footedness = req.Footedness
 	user.Goals = req.Goals
+	user.TrainingDays = weekdayNums
 
 	return s.UserRepo.Update(ctx, user)
 }
