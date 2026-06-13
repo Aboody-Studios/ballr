@@ -30,24 +30,14 @@ type ProfileResponse struct {
 	CreatedAt     time.Time         `json:"created_at"`
 }
 
-type TrainingDay time.Weekday
+
 
 type OnboardingRequest struct {
-	Email        string            `json:"email" validate:"required,email"`
-	FullName     string            `json:"fullName" validate:"required"`
-	BirthDate    time.Time         `json:"birthdate" validate:"required,ltefield=Now"`
-	Position     domain.Position   `json:"position" validate:"required,oneof=GK CB LB RB CM LW RW ST"`
-	Footedness   domain.Footedness `json:"footedness" validate:"required,oneof=Left Right Both"`
-	Goals        string            `json:"goals"`
-	TrainingDays []string          `json:"trainingdays"`
-}
-
-var WeekDayTranslation = map[string]time.Weekday{
-	"SUNDAY":    time.Sunday,
-	"MONDAY":    time.Monday,
-	"TUESDAY":   time.Tuesday,
-	"WEDNESDAY": time.Wednesday,
-	"THURSDAY":  time.Thursday,
-	"FRIDAY":    time.Friday,
-	"SATURDAY":  time.Saturday,
+	Email        string               `json:"email" validate:"required,email"`
+	FullName     string               `json:"fullName" validate:"required"`
+	BirthDate    time.Time            `json:"birthdate" validate:"required,ltefield=Now"`
+	Position     domain.Position      `json:"position" validate:"required,oneof=GK CB LB RB CM LW RW ST"`
+	Footedness   domain.Footedness    `json:"footedness" validate:"required,oneof=Left Right Both"`
+	Goals        string               `json:"goals"`
+	TrainingDays []domain.TrainingDay `json:"trainingdays"`
 }

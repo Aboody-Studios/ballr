@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,6 +30,22 @@ const (
 	FootednessBoth  Footedness = "Both"
 )
 
+// Since I can only attach methods to types that I define in my own local package,
+// creating TrainingDay is essential because it is used in UnmarshalJSON
+type TrainingDay time.Weekday
+
+var WeekDayTranslation = map[string]time.Weekday{
+	"SUNDAY":    time.Sunday,
+	"MONDAY":    time.Monday,
+	"TUESDAY":   time.Tuesday,
+	"WEDNESDAY": time.Wednesday,
+	"THURSDAY":  time.Thursday,
+	"FRIDAY":    time.Friday,
+	"SATURDAY":  time.Saturday,
+}
+
+
+
 // TODO!: Remove gorm
 type User struct {
 	ID            string
@@ -40,13 +58,14 @@ type User struct {
 	Footedness    Footedness
 	Goals         string
 	CreatedAt     time.Time
-	TrainingDays  []time.Weekday
+	TrainingDays  []TrainingDay
 }
 
 type JWTCustomClaims struct {
 	Email string `json:"email"`
 	jwt.RegisteredClaims
 }
+
 
 func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) *User {
 	user := &User{
@@ -80,6 +99,23 @@ func (u *User) CalculateAge() int {
 	}
 	return age
 }
+
+func (td *TrainingDay) UnmarshalJSON(data []byte) error {
+	var cleanString string
+	if err := json.Unmarshal(data, &cleanString); err != nil {
+		return err
+	}
+
+	value, ok := WeekDayTranslation[cleanString]
+	if !ok {
+		return fmt.Errorf("Invalid training day")
+	}
+
+	*td = TrainingDay(value)
+
+	return nil
+}
+
 
 var (
 	ErrInvalidEmail      = &UserError{"invalid email address"}
