@@ -237,12 +237,44 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 
 // GetLeaderboard returns the global or friend-group leaderboard.
 // Supports pagination with offset and limit.
-func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit int) ([]domain.LeaderboardEntry, error) {
+func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit int64) ([]domain.LeaderboardEntry, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 25
 	}
 
-	return s.leaderboardRepo.GetTopPlayers(ctx, offset, limit)
+	redisZ, err := s.leaderboardRepo.GetPlayers(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(redisZ) == 0 {
+		return []domain.LeaderboardEntry{}, nil
+	}
+
+	userIDs := make([]string, len(redisZ))
+	for i, z := range redisZ {
+		userIDs[i] = z.Member.(string)
+	}
+
+	// TODO!: Implement GetDisplayNames/GetUsernames in userRepo
+	nameMap, err := s.userRepo.GetDisplayNames(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	leaderboard := make([]domain.LeaderboardEntry, len(redisZ))
+
+	for i, value := range redisZ {
+
+		leaderboard[i] = domain.LeaderboardEntry{
+			Rank:        int(offset) + i + 1,
+			UserID:      userIDs[i],
+			DisplayName: nameMap[userIDs[i]],
+			TotalPoints: int64(value.Score),
+		}
+	}
+
+	return leaderboard, nil
 }
 
 // GetAchievements returns all achievements for a user.

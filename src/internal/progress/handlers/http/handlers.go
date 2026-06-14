@@ -61,7 +61,7 @@ func (h *ProgressHandler) GetLeaderboardHandler(echoCtx *echo.Context) error {
 		limit = 25
 	}
 
-	leaderboard, err := h.progressService.GetLeaderboard(echoCtx.Request().Context(), offset, limit)
+	leaderboard, err := h.progressService.GetLeaderboard(echoCtx.Request().Context(), int64(offset), int64(limit))
 	if err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load leaderboard"})
 	}

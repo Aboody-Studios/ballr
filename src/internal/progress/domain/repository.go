@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // ProgressRepository defines the contract for user progress persistence.
@@ -11,12 +13,6 @@ type ProgressRepository interface {
 
 	// FindByUserID retrieves the progress record for a specific user.
 	FindByUserID(ctx context.Context, userID string) (*Progress, error)
-
-	// AddPoints increments the user's total points by the given amount.
-	AddPoints(ctx context.Context, userID string, points int64) error
-
-	// GetLeaderboard retrieves top users by points for the leaderboard.
-	GetLeaderboard(ctx context.Context, limit int) ([]*LeaderboardEntry, error)
 }
 
 // AchievementRepository defines the contract for achievement persistence.
@@ -34,7 +30,6 @@ type AchievementRepository interface {
 	HasAchievement(ctx context.Context, userID string, achievementType string) (bool, error)
 }
 
-// ErrProgressNotFound is returned when a progress record is not found.
 var ErrProgressNotFound = errProgressNotFound{}
 
 type errProgressNotFound struct{}
@@ -50,20 +45,17 @@ type EventLogRepository interface {
 	FindRecentByUserID(ctx context.Context, userID string, limit int) ([]*EventLog, error)
 }
 
-// LeaderboardRepository defines the contract for leaderboard operations.
 type LeaderboardRepository interface {
 	// UpdateScore updates a user's score on the leaderboard.
 	UpdateScore(ctx context.Context, userID string, points int) error
 
-	// GetTopPlayers retrieves the top players for the leaderboard.
-	GetTopPlayers(ctx context.Context, offset, limit int) ([]LeaderboardEntry, error)
+	GetPlayers(ctx context.Context, offset, limit int64) ([]redis.Z, error)
 }
 
 type TransactionManager interface {
 	Transact(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-// ErrAchievementNotFound is returned when an achievement is not found.
 var ErrAchievementNotFound = errAchievementNotFound{}
 
 type errAchievementNotFound struct{}

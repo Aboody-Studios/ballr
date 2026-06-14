@@ -30,8 +30,6 @@ type ProfileResponse struct {
 	CreatedAt     time.Time         `json:"created_at"`
 }
 
-
-
 type OnboardingRequest struct {
 	Email        string               `json:"email" validate:"required,email"`
 	FullName     string               `json:"fullName" validate:"required"`

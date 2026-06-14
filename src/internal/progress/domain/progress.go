@@ -88,8 +88,7 @@ type LeaderboardEntry struct {
 	Rank        int
 	UserID      string
 	DisplayName string
-	TotalPoints int
-	Streak      int
+	TotalPoints int64
 }
 
 // NewProgress creates a new progress aggregate for a user.

@@ -44,8 +44,6 @@ var WeekDayTranslation = map[string]time.Weekday{
 	"SATURDAY":  time.Saturday,
 }
 
-
-
 // TODO!: Remove gorm
 type User struct {
 	ID            string
@@ -65,7 +63,6 @@ type JWTCustomClaims struct {
 	Email string `json:"email"`
 	jwt.RegisteredClaims
 }
-
 
 func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) *User {
 	user := &User{
@@ -115,7 +112,6 @@ func (td *TrainingDay) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
-
 
 var (
 	ErrInvalidEmail      = &UserError{"invalid email address"}

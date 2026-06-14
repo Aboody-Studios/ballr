@@ -3,47 +3,34 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/Aboody-Studios/ballr/src/internal/progress/domain"
-	"gorm.io/gorm"
+	"github.com/redis/go-redis/v9"
 )
 
-type PostgresLeaderboardRepository struct {
-	*gorm.DB
+type RedisLeaderboardRepo struct {
+	Client *redis.Client
 }
 
-func (r *PostgresLeaderboardRepository) UpdateScore(ctx context.Context, userID string, points int) error {
-	tx := r.DB.Model(&domain.Progress{}).Where("user_id = ?", userID).
-		Update("total_points", points)
-	return tx.Error
+func (rlr RedisLeaderboardRepo) UpdateScore(ctx context.Context, userID string, points int) error {
+	err := rlr.Client.ZAdd(ctx, "global_leaderboard",
+		redis.Z{
+			Score:  float64(points),
+			Member: userID,
+		}).Err()
+
+	return err
 }
 
-type leaderboardTopPlayerRow struct {
-	UserID        string
-	TotalPoints   int
-	CurrentStreak int
-}
+func (rlr RedisLeaderboardRepo) GetPlayers(ctx context.Context, offset, limit int64) ([]redis.Z, error) {
+	redisZEntries, err := rlr.Client.ZRangeArgsWithScores(ctx, redis.ZRangeArgs{
+		Key:   "global_leaderboard",
+		Rev:   true,
+		Start: offset,
+		Stop:  offset + limit - 1,
+	}).Result()
 
-func (r *PostgresLeaderboardRepository) GetTopPlayers(ctx context.Context, offset, limit int) ([]domain.LeaderboardEntry, error) {
-	var rows []leaderboardTopPlayerRow
-	tx := r.DB.Model(&domain.Progress{}).
-		Select("user_id, total_points, current_streak").
-		Order("total_points DESC").
-		Offset(offset).
-		Limit(limit).
-		Find(&rows)
-	if tx.Error != nil {
-		return nil, tx.Error
+	if err != nil {
+		return nil, err
 	}
 
-	entries := make([]domain.LeaderboardEntry, len(rows))
-	for i, row := range rows {
-		entries[i] = domain.LeaderboardEntry{
-			Rank:        offset + i + 1,
-			UserID:      row.UserID,
-			DisplayName: "",
-			TotalPoints: row.TotalPoints,
-			Streak:      row.CurrentStreak,
-		}
-	}
-	return entries, nil
+	return redisZEntries, nil
 }
