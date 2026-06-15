@@ -35,6 +35,7 @@ func (r *PostgresMatchRepository) FindByUserID(ctx context.Context, userID strin
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
+
 	result := make([]*domain.Match, len(matches))
 	for i := range matches {
 		result[i] = &matches[i]

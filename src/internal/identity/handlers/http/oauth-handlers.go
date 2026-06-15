@@ -19,7 +19,7 @@ func (h *IdentityHandler) SignInWithGoogleHandler(echoCtx *echo.Context) error {
 	}
 
 	config := infrastructure.GetGoogleOAuthConfig()
-	url := config.AuthCodeURL(state)
+	googleOauthuUrl := config.AuthCodeURL(state)
 
 	secure := os.Getenv("COOKIE_SECURE") == "true"
 	echoCtx.SetCookie(&http.Cookie{
@@ -30,7 +30,7 @@ func (h *IdentityHandler) SignInWithGoogleHandler(echoCtx *echo.Context) error {
 		Secure:   secure,
 	})
 
-	return echoCtx.Redirect(http.StatusSeeOther, url)
+	return echoCtx.Redirect(http.StatusSeeOther, googleOauthuUrl)
 }
 
 func (h *IdentityHandler) GoogleCallbackHandler(echoCtx *echo.Context) error {

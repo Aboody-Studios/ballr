@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Aboody-Studios/ballr/src/internal/progress/domain"
+	userDomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	progressDomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/google/uuid"
 )
@@ -14,20 +15,21 @@ import (
 // achievements, streaks, and leaderboards for the Progress bounded context.
 // Something as infra for the orb app aboody showed us
 type GamificationService struct {
-	progressRepo       domain.ProgressRepository
-	achievementRepo    domain.AchievementRepository
-	eventLogRepo       domain.EventLogRepository
-	leaderboardRepo    domain.LeaderboardRepository
-	TransactionManager domain.TransactionManager
+	progressRepo       progressDomain.ProgressRepository
+	achievementRepo    progressDomain.AchievementRepository
+	eventLogRepo       progressDomain.EventLogRepository
+	leaderboardRepo    progressDomain.LeaderboardRepository
+	userRepo           userDomain.UserRepository
+	TransactionManager progressDomain.TransactionManager
 	EventPublisher     events.Publisher
 }
 
 // NewGamificationService creates a new gamification service with required dependencies.
 func NewGamificationService(
-	progressRepo domain.ProgressRepository,
-	achievementRepo domain.AchievementRepository,
-	eventLogRepo domain.EventLogRepository,
-	leaderboardRepo domain.LeaderboardRepository,
+	progressRepo progressDomain.ProgressRepository,
+	achievementRepo progressDomain.AchievementRepository,
+	eventLogRepo progressDomain.EventLogRepository,
+	leaderboardRepo progressDomain.LeaderboardRepository,
 ) *GamificationService {
 	return &GamificationService{
 		progressRepo:    progressRepo,
@@ -41,17 +43,17 @@ func NewGamificationService(
 // This is the core entry point for the event-based gamification system.
 // TODO!: Make this function only for processing events with points.
 func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Event) error {
-	var progress *domain.Progress
+	var progress *progressDomain.Progress
 
 	if err := gs.TransactionManager.Transact(ctx, func(ctx context.Context) error {
 		innerScopeProgress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
 		if err != nil {
 			id := fmt.Sprintf("prog_%d", time.Now().UnixNano())
-			innerScopeProgress = domain.NewProgress(id, event.UserID)
+			innerScopeProgress = progressDomain.NewProgress(id, event.UserID)
 		}
 		progress = innerScopeProgress
 
-		points, ok := domain.CalculatePoints(event.Type)
+		points, ok := progressDomain.CalculatePoints(event.Type)
 
 		if ok {
 			timeNow := time.Now()
@@ -63,7 +65,7 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 			return fmt.Errorf("failed to save progress: %w", err)
 		}
 
-		eventLog := domain.NewEventLog(event, points)
+		eventLog := progressDomain.NewEventLog(event, points)
 		if err := gs.eventLogRepo.Save(ctx, eventLog); err != nil {
 			return fmt.Errorf("failed to save event log: %w", err)
 		}
@@ -126,61 +128,61 @@ func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, ev
 
 // checkAchievements evaluates if user qualifies for any new achievements.
 // Checks against all achievement criteria and returns newly unlocked achievements.
-func (s *GamificationService) checkAchievements(ctx context.Context, userID string, progress *domain.Progress, recentEvent events.EventType) ([]*domain.Achievement, error) {
-	var newAchievements []*domain.Achievement
+func (s *GamificationService) checkAchievements(ctx context.Context, userID string, progress *progressDomain.Progress, recentEvent events.EventType) ([]*progressDomain.Achievement, error) {
+	var newAchievements []*progressDomain.Achievement
 
 	existingAchievements, err := s.achievementRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	existingTypes := make([]domain.AchievementType, len(existingAchievements))
+	existingTypes := make([]progressDomain.AchievementType, len(existingAchievements))
 	for i, a := range existingAchievements {
-		existingTypes[i] = domain.AchievementType(a.Type)
+		existingTypes[i] = progressDomain.AchievementType(a.Type)
 	}
 
 	criteria := []struct {
-		typ     domain.AchievementType
-		checker func(*domain.Progress, []domain.AchievementType) bool
+		typ     progressDomain.AchievementType
+		checker func(*progressDomain.Progress, []progressDomain.AchievementType) bool
 		points  int
 	}{
 		{
-			domain.AchievementTypeFirstUpload,
-			func(p *domain.Progress, existing []domain.AchievementType) bool {
+			progressDomain.AchievementTypeFirstUpload,
+			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return recentEvent == events.EventMatchUploaded &&
-					!contains(existing, domain.AchievementTypeFirstUpload)
+					!contains(existing, progressDomain.AchievementTypeFirstUpload)
 			},
 			100,
 		},
 		{
-			domain.AchievementTypeStreakWeek,
-			func(p *domain.Progress, existing []domain.AchievementType) bool {
+			progressDomain.AchievementTypeStreakWeek,
+			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return p.CurrentStreak >= 7 &&
-					!contains(existing, domain.AchievementTypeStreakWeek)
+					!contains(existing, progressDomain.AchievementTypeStreakWeek)
 			},
 			500,
 		},
 		{
-			domain.AchievementTypeStreakMonth,
-			func(p *domain.Progress, existing []domain.AchievementType) bool {
+			progressDomain.AchievementTypeStreakMonth,
+			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return p.CurrentStreak >= 30 &&
-					!contains(existing, domain.AchievementTypeStreakMonth)
+					!contains(existing, progressDomain.AchievementTypeStreakMonth)
 			},
 			2000,
 		},
 		{
-			domain.AchievementTypeAnalysisMaster,
-			func(p *domain.Progress, existing []domain.AchievementType) bool {
+			progressDomain.AchievementTypeAnalysisMaster,
+			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return p.TotalPoints >= 5000 &&
-					!contains(existing, domain.AchievementTypeAnalysisMaster)
+					!contains(existing, progressDomain.AchievementTypeAnalysisMaster)
 			},
 			1000,
 		},
 		{
-			domain.AchievementTypeDrillCompleter,
-			func(p *domain.Progress, existing []domain.AchievementType) bool {
+			progressDomain.AchievementTypeDrillCompleter,
+			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return recentEvent == events.EventDrillCompleted &&
-					!contains(existing, domain.AchievementTypeDrillCompleter)
+					!contains(existing, progressDomain.AchievementTypeDrillCompleter)
 			},
 			250,
 		},
@@ -188,7 +190,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 
 	for _, c := range criteria {
 		if c.checker(progress, existingTypes) {
-			achievement := domain.NewAchievement(userID, c.typ, c.points)
+			achievement := progressDomain.NewAchievement(userID, c.typ, c.points)
 			newAchievements = append(newAchievements, achievement)
 		}
 	}
@@ -198,7 +200,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 
 // GetProgressSummary returns the user's complete progress summary.
 // Includes total points, current streak, and recent activity.
-func (s *GamificationService) GetProgressSummary(ctx context.Context, userID string) (*domain.ProgressSummary, error) {
+func (s *GamificationService) GetProgressSummary(ctx context.Context, userID string) (*progressDomain.ProgressSummary, error) {
 	progress, err := s.progressRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load progress: %w", err)
@@ -214,18 +216,18 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 		return nil, fmt.Errorf("failed to find recent user activities: %w", err)
 	}
 
-	summary := &domain.ProgressSummary{
+	summary := &progressDomain.ProgressSummary{
 		UserID:           userID,
 		TotalPoints:      progress.TotalPoints,
 		CurrentStreak:    progress.CurrentStreak,
 		LastActive:       progress.LastActive,
 		NextStreakExpiry: progress.NextStreakExpiry(),
 		AchievementCount: len(achievements),
-		RecentEvents:     make([]domain.EventSummary, 0, len(recentEvents)),
+		RecentEvents:     make([]progressDomain.EventSummary, 0, len(recentEvents)),
 	}
 
 	for _, event := range recentEvents {
-		summary.RecentEvents = append(summary.RecentEvents, domain.EventSummary{
+		summary.RecentEvents = append(summary.RecentEvents, progressDomain.EventSummary{
 			Type:      string(event.Type),
 			Points:    event.PointsAwarded,
 			Timestamp: event.Timestamp,
@@ -237,7 +239,7 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 
 // GetLeaderboard returns the global or friend-group leaderboard.
 // Supports pagination with offset and limit.
-func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit int64) ([]domain.LeaderboardEntry, error) {
+func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit int64) ([]progressDomain.LeaderboardEntry, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 25
 	}
@@ -248,7 +250,7 @@ func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit 
 	}
 
 	if len(redisZ) == 0 {
-		return []domain.LeaderboardEntry{}, nil
+		return []progressDomain.LeaderboardEntry{}, nil
 	}
 
 	userIDs := make([]string, len(redisZ))
@@ -256,17 +258,16 @@ func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit 
 		userIDs[i] = z.Member.(string)
 	}
 
-	// TODO!: Implement GetDisplayNames/GetUsernames in userRepo
-	nameMap, err := s.userRepo.GetDisplayNames(ctx, userIDs)
+	nameMap, err := s.userRepo.GetUsernames(ctx, userIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	leaderboard := make([]domain.LeaderboardEntry, len(redisZ))
+	leaderboard := make([]progressDomain.LeaderboardEntry, len(redisZ))
 
 	for i, value := range redisZ {
 
-		leaderboard[i] = domain.LeaderboardEntry{
+		leaderboard[i] = progressDomain.LeaderboardEntry{
 			Rank:        int(offset) + i + 1,
 			UserID:      userIDs[i],
 			DisplayName: nameMap[userIDs[i]],
@@ -278,11 +279,11 @@ func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit 
 }
 
 // GetAchievements returns all achievements for a user.
-func (s *GamificationService) GetAchievements(ctx context.Context, userID string) ([]*domain.Achievement, error) {
+func (s *GamificationService) GetAchievements(ctx context.Context, userID string) ([]*progressDomain.Achievement, error) {
 	return s.achievementRepo.FindByUserID(ctx, userID)
 }
 
-func contains(slice []domain.AchievementType, item domain.AchievementType) bool {
+func contains(slice []progressDomain.AchievementType, item progressDomain.AchievementType) bool {
 	for _, s := range slice {
 		if s == item {
 			return true

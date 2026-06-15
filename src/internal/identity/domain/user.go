@@ -48,6 +48,7 @@ var WeekDayTranslation = map[string]time.Weekday{
 type User struct {
 	ID            string
 	Email         string `gorm:"uniqueIndex"`
+	Username      string
 	AvatarURL     string
 	OAuthProvider string
 	FullName      string

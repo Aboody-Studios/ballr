@@ -31,7 +31,7 @@ type ProfileResponse struct {
 }
 
 type OnboardingRequest struct {
-	Email        string               `json:"email" validate:"required,email"`
+	Username     string               `json:"username" validate:"required"`
 	FullName     string               `json:"fullName" validate:"required"`
 	BirthDate    time.Time            `json:"birthdate" validate:"required,ltefield=Now"`
 	Position     domain.Position      `json:"position" validate:"required,oneof=GK CB LB RB CM LW RW ST"`

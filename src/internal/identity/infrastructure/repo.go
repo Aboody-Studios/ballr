@@ -54,3 +54,24 @@ func (postDb *PostgresUserRepo) Update(ctx context.Context, user *domain.User) e
 
 	return nil
 }
+
+func (postDb *PostgresUserRepo) GetUsernames(ctx context.Context, userIDs []string) (map[string]string, error) {
+	type userRow struct {
+		ID       string
+		Username string
+	}
+	var userRowSlice = make([]userRow, 0, len(userIDs))
+
+	obj := postDb.WithContext(ctx).Model(&domain.User{}).Where("id IN ?", userIDs).Select("id, username").Find(&userRowSlice)
+	if obj.Error != nil {
+		return nil, obj.Error
+	}
+
+	IDtoUsername := make(map[string]string, len(userIDs))
+
+	for _, currUserRow := range userRowSlice {
+		IDtoUsername[currUserRow.ID] = currUserRow.Username
+	}
+
+	return IDtoUsername, nil
+}

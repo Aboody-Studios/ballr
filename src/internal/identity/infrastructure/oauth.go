@@ -52,10 +52,12 @@ type GoogleOAuthAPI struct{}
 func (g *GoogleOAuthAPI) FetchUserInfo(ctx context.Context, token *oauth2.Token) (*domain.GoogleUserInfo, error) {
 	config := GetGoogleOAuthConfig()
 	client := config.Client(ctx, token)
+
 	res, getErr := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if getErr != nil {
 		return nil, getErr
 	}
+	
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("Token rejected by google:%d", res.StatusCode)
 	}
