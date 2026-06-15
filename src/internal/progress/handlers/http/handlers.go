@@ -72,3 +72,5 @@ func (h *ProgressHandler) GetLeaderboardHandler(echoCtx *echo.Context) error {
 		"limit":       limit,
 	})
 }
+
+//TODO!: Build GetRelativeLeaderboardHandler and its service functions to fetch the user's rank on the laderboards

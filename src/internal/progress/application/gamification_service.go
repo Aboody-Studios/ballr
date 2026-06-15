@@ -238,7 +238,8 @@ func (s *GamificationService) GetProgressSummary(ctx context.Context, userID str
 }
 
 // GetLeaderboard returns the global or friend-group leaderboard.
-// Supports pagination with offset and limit.
+// Supports pagination with offset and limit. Offset is necesssary because each time the user wants to fetch new users on the leaderboard,
+// a frontend request is fired with a new offset. While limit variable is important for future features.
 func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit int64) ([]progressDomain.LeaderboardEntry, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 25

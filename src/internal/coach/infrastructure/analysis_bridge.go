@@ -66,17 +66,16 @@ func (b *CoachAnalysisBridge) GetMatchHistory(ctx context.Context, userID string
 	return result, nil
 }
 
-// TODO!: Use AnalysisResult here instead of Match
-func matchToInsight(m *analysisdomain.Match) *coachdomain.MatchInsight {
+func matchToInsight(m *analysisdomain.AnalysisResult) *coachdomain.MatchInsight {
 	insight := &coachdomain.MatchInsight{
 		MatchID:     m.ID,
-		MatchDate:   m.Metadata.MatchDate,
-		DurationMin: m.Metadata.Duration / 60,
+		MatchDate:   m.Match.Metadata.MatchDate,
+		DurationMin: m.Match.Metadata.Duration / 60,
 	}
-	if m.AnalysisResult != nil {
-		insight.DistanceKM = m.AnalysisResult.Summary.TotalDistanceKM
-		insight.TopSpeedKMH = m.AnalysisResult.Summary.TopSpeedKMH
-		insight.PassAccuracy = m.AnalysisResult.Summary.PassAccuracy
+	if m != nil {
+		insight.DistanceKM = m.Summary.TotalDistanceKM
+		insight.TopSpeedKMH = m.Summary.TopSpeedKMH
+		insight.PassAccuracy = m.Summary.PassAccuracy
 	}
 	return insight
 }
