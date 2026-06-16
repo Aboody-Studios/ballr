@@ -84,7 +84,6 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 	}
 	gs.EventPublisher.PublishEvent(ctx, checkAchievementsEvent)
 
-	//TODO!: Implement leaderboard using Redis and not PostgreSQL
 	if err := gs.leaderboardRepo.UpdateScore(ctx, event.UserID, progress.TotalPoints); err != nil {
 		fmt.Errorf("failed to update score: %w", err)
 	}
@@ -277,6 +276,15 @@ func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit 
 	}
 
 	return leaderboard, nil
+}
+
+func (s *GamificationService) GetUserOffset(ctx context.Context, userID string) (int64, error) {
+	offset, err := s.leaderboardRepo.GetPlayerOffset(ctx, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get user offset")
+	}
+
+	return offset, nil
 }
 
 // GetAchievements returns all achievements for a user.

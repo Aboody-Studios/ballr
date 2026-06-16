@@ -57,7 +57,7 @@ func (g *GoogleOAuthAPI) FetchUserInfo(ctx context.Context, token *oauth2.Token)
 	if getErr != nil {
 		return nil, getErr
 	}
-	
+
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("Token rejected by google:%d", res.StatusCode)
 	}

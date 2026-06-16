@@ -50,6 +50,8 @@ type LeaderboardRepository interface {
 	UpdateScore(ctx context.Context, userID string, points int) error
 
 	GetPlayers(ctx context.Context, offset, limit int64) ([]redis.Z, error)
+
+	GetPlayerOffset(ctx context.Context, userID string) (int64, error)
 }
 
 type TransactionManager interface {

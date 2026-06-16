@@ -73,4 +73,28 @@ func (h *ProgressHandler) GetLeaderboardHandler(echoCtx *echo.Context) error {
 	})
 }
 
-//TODO!: Build GetRelativeLeaderboardHandler and its service functions to fetch the user's rank on the laderboards
+func (h *ProgressHandler) GetRelativeLeaderboardHandler(echoCtx *echo.Context) error {
+	claims, err := delivery.ExtractToken(echoCtx)
+	if err != nil {
+		return echoCtx.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	userID := claims.ID
+	userOffset, err := h.progressService.GetUserOffset(echoCtx.Request().Context(), userID)
+	if err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user offset"})
+	}
+
+	RelativePageFirstOffset := (userOffset / int64(25)) * 25
+	leaderboard, err := h.progressService.GetLeaderboard(echoCtx.Request().Context(), RelativePageFirstOffset, 25)
+	if err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load leaderboard"})
+	}
+
+	return echoCtx.JSON(http.StatusOK, map[string]any{
+		"leaderboard": leaderboard,
+		"offset":      RelativePageFirstOffset,
+		"limit":       25,
+	})
+
+}

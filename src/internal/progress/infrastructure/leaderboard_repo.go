@@ -34,3 +34,13 @@ func (rlr RedisLeaderboardRepo) GetPlayers(ctx context.Context, offset, limit in
 
 	return redisZEntries, nil
 }
+
+func (rlr RedisLeaderboardRepo) GetPlayerOffset(ctx context.Context, userID string) (int64, error) {
+	rank, err := rlr.Client.ZRevRank(ctx, "global_leaderbaord", userID).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	return rank, nil
+
+}
