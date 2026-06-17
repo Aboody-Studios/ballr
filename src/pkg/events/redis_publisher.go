@@ -20,15 +20,15 @@ func NewRedisPublisher(rdb *redis.Client) *RedisPublisher {
 	}
 }
 
-func (p *RedisPublisher) PublishEvent(ctx context.Context, event Event) error {
+func (rp *RedisPublisher) PublishEvent(ctx context.Context, event Event) error {
 
 	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshal event: %w", err)
 	}
 
-	return p.rdb.XAdd(ctx, &redis.XAddArgs{
-		Stream: p.stream,
+	return rp.rdb.XAdd(ctx, &redis.XAddArgs{
+		Stream: rp.stream,
 		ID:     "*",
 		Values: map[string]any{
 			"data": string(data),

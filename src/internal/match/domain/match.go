@@ -105,7 +105,7 @@ func (m *Match) MarkFailed() error {
 // TODO!: Call analysis result table here instead of match
 func (ar *AnalysisResult) CanViewResults(matchID string) bool {
 	//TODO!: Fetch match from database using matchID to check its status
-	return m.Status == MatchStatusCompleted && m.AnalysisResult != nil
+	return ar.Match.Status == MatchStatusCompleted && ar.AnalysisResult != nil
 }
 
 // GetTopInsight returns the most significant event insight for quick display.

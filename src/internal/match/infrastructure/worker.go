@@ -166,9 +166,14 @@ func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *
 		return fmt.Errorf("update match status: %w", err)
 	}
 
-	//TODO!: Create EventAnalysisCompleted struct
+	completeAnalysisEvent := events.Event{
+		ID:     job.MatchID,
+		Type:   events.EventAnalysisCompleted,
+		UserID: job.UserID,
+		Timestamp: time.Now(),
+	}
 
-	if err := w.eventPublisher.PublishEvent(ctx, job.UserID, events.EventAnalysisCompleted, nil); err != nil {
+	if err := w.eventPublisher.PublishEvent(ctx, completeAnalysisEvent); err != nil {
 		log.Warn("failed to publish completion event", "error", err)
 	}
 

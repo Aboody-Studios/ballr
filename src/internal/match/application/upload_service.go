@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
@@ -88,9 +89,10 @@ func (s *UploadService) StartMatchProcessingWorflow(ctx context.Context, s3Key s
 	}
 
 	matchUploaded := events.Event{
-		ID:     uuid.NewString(),
-		Type:   events.EventMatchUploaded,
-		UserID: match.UserID,
+		ID:        uuid.NewString(),
+		Type:      events.EventMatchUploaded,
+		UserID:    match.UserID,
+		Timestamp: time.Now(),
 	}
 
 	if err := s.eventPublisher.PublishEvent(ctx, matchUploaded); err != nil {
@@ -130,14 +132,10 @@ func parseMatchIDFromS3Key(key string) (string, error) {
 
 // Application layer errors for upload use cases.
 var (
-	// ErrInvalidFileFormat indicates the video file extension is not supported.
 	ErrInvalidFileFormat = &UploadError{"invalid file format"}
-
-	// ErrFileTooLarge indicates the video file exceeds size limits.
-	ErrFileTooLarge = &UploadError{"file size exceeds maximum allowed"}
+	ErrFileTooLarge      = &UploadError{"file size exceeds maximum allowed"}
 )
 
-// UploadError represents domain-specific errors for upload operations.
 type UploadError struct {
 	Message string
 }

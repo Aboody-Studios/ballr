@@ -176,7 +176,7 @@ func NewEventLog(event events.Event, points int) *EventLog {
 		ID:            uuid.NewString(),
 		Type:          event.Type,
 		PointsAwarded: points,
-		Timestamp:     time.Now(),
+		Timestamp:     event.Timestamp,
 		Metadata:      event.Metadata,
 	}
 }

@@ -27,7 +27,7 @@ func (h *ProgressHandler) GetProgressSummaryHandler(echoCtx *echo.Context) error
 	if err != nil {
 		return echoCtx.JSON(http.StatusNotFound, map[string]string{"error": "Progress not found"})
 	}
-	// TODO!: Maybe return map text like the handlers below
+
 	return echoCtx.JSON(http.StatusOK, summary)
 }
 

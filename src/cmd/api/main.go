@@ -94,7 +94,7 @@ func main() {
 	progressRepo := &progressinfrastructure.PostgresProgressRepository{DB: db}
 	achievementRepo := &progressinfrastructure.PostgresAchievementRepository{DB: db}
 	eventLogRepo := &progressinfrastructure.PostgresEventLogRepository{DB: db}
-	leaderboardRepo := &progressinfrastructure.PostgresLeaderboardRepository{DB: db}
+	leaderboardRepo := &progressinfrastructure.RedisLeaderboardRepo{Client: rdb}
 	gamificationService := progressapplication.NewGamificationService(progressRepo, achievementRepo, eventLogRepo, leaderboardRepo)
 	progressHandler := progresshttp.NewProgressHandler(gamificationService)
 

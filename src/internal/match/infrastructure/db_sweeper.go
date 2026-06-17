@@ -7,6 +7,7 @@ import (
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
+	"github.com/google/uuid"
 )
 
 type Sweeper struct {
@@ -41,13 +42,22 @@ func (swpr *Sweeper) SweepStuckMatches(ctx context.Context) error {
 					continue
 				}
 
+				// TODO!: See if metadata is necessary
+
 				eventMap := map[string]any{
 					"match_id":  match.ID,
 					"video_url": match.VideoURL,
 				}
 
-				//TODO!: Create EventAnalysisStart struct
-				if err := swpr.EventPublisher.PublishEvent(ctx, match.UserID, events.EventAnalysisStart, eventMap); err != nil {
+				startAnalysisEvent := events.Event{
+					ID:       uuid.NewString(),
+					Type:     events.EventAnalysisStart,
+					UserID:   match.UserID,
+					Metadata: eventMap,
+					Timestamp: time.Now(),
+				}
+
+				if err := swpr.EventPublisher.PublishEvent(ctx, startAnalysisEvent); err != nil {
 					// Publish failed; revert claim so another sweeper can retry later.
 					if err2 := swpr.MatchRepo.UnclaimMatch(ctx, match.ID); err2 != nil {
 						log.Printf("revert claim failed: %v", err2)
