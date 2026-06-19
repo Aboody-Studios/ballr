@@ -38,4 +38,5 @@ type OnboardingRequest struct {
 	Footedness   domain.Footedness    `json:"footedness" validate:"required,oneof=Left Right Both"`
 	Goals        string               `json:"goals"`
 	TrainingDays []domain.TrainingDay `json:"trainingdays"`
+	Timezone     string               `json:"timezone"`
 }

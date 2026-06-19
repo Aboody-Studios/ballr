@@ -167,9 +167,9 @@ func (w *Worker) runAnalysis(ctx context.Context, job *domain.AnalysisJob, log *
 	}
 
 	completeAnalysisEvent := events.Event{
-		ID:     job.MatchID,
-		Type:   events.EventAnalysisCompleted,
-		UserID: job.UserID,
+		ID:        job.MatchID,
+		Type:      events.EventAnalysisCompleted,
+		UserID:    job.UserID,
 		Timestamp: time.Now(),
 	}
 

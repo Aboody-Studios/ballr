@@ -41,7 +41,7 @@ func NewGamificationService(
 
 // ProcessEvent handles a gamification event and calculates points/achievements.
 // This is the core entry point for the event-based gamification system.
-// TODO!: Make this function only for processing events with points.
+// TODO!: Make this function only for processing events with points (?)
 func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Event) error {
 	var progress *progressDomain.Progress
 

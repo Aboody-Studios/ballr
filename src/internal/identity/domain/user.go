@@ -30,8 +30,8 @@ const (
 	FootednessBoth  Footedness = "Both"
 )
 
-// Since I can only attach methods to types that I define in my own local package,
-// creating TrainingDay is essential because it is used in UnmarshalJSON
+// Since methods can only be attached to types that are defined in a own local package,
+// creating TrainingDay here is essential because it is used in UnmarshalJSON.
 type TrainingDay time.Weekday
 
 var WeekDayTranslation = map[string]time.Weekday{
@@ -57,7 +57,7 @@ type User struct {
 	Footedness    Footedness
 	Goals         string
 	CreatedAt     time.Time
-	TrainingDays  []TrainingDay
+	TrainingDays  []TrainingDay `gorm: "type:jsonb;serializer:json"`
 }
 
 type JWTCustomClaims struct {
@@ -98,6 +98,7 @@ func (u *User) CalculateAge() int {
 	return age
 }
 
+// Gets called during Bind in CompleteProfileHandler
 func (td *TrainingDay) UnmarshalJSON(data []byte) error {
 	var cleanString string
 	if err := json.Unmarshal(data, &cleanString); err != nil {

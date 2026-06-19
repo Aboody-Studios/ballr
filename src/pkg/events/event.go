@@ -19,6 +19,7 @@ const (
 	EventDrillCompleted            EventType = "DRILL_COMPLETED"
 	EventCoachInteraction          EventType = "COACH_INTERACTION"
 	EventAnalysisStart             EventType = "ANALYSIS_START"
+	EventTrainingDay               EventType = "TRAINING_DAY"
 	EventAchievementCheckRequested EventType = "CHECK_ACHIEVEMENT"
 )
 

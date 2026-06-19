@@ -50,10 +50,10 @@ func (swpr *Sweeper) SweepStuckMatches(ctx context.Context) error {
 				}
 
 				startAnalysisEvent := events.Event{
-					ID:       uuid.NewString(),
-					Type:     events.EventAnalysisStart,
-					UserID:   match.UserID,
-					Metadata: eventMap,
+					ID:        uuid.NewString(),
+					Type:      events.EventAnalysisStart,
+					UserID:    match.UserID,
+					Metadata:  eventMap,
 					Timestamp: time.Now(),
 				}
 
