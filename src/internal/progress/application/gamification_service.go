@@ -281,7 +281,7 @@ func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit 
 func (s *GamificationService) GetUserOffset(ctx context.Context, userID string) (int64, error) {
 	offset, err := s.leaderboardRepo.GetPlayerOffset(ctx, userID)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get user offset")
+		return 0, err
 	}
 
 	return offset, nil

@@ -96,5 +96,4 @@ func (h *ProgressHandler) GetRelativeLeaderboardHandler(echoCtx *echo.Context) e
 		"offset":      RelativePageFirstOffset,
 		"limit":       25,
 	})
-
 }
