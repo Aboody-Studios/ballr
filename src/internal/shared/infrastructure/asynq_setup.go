@@ -5,7 +5,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func initiateAsynqServer(rdc redis.Client) (*asynq.Server, *asynq.RedisClientOpt) {
+func InitiateAsynqServer(rdc redis.Client) (*asynq.Server, *asynq.RedisClientOpt) {
 	asynqRedisClientOpt := asynq.RedisClientOpt{Addr: rdc.NodeAddress()}
 	asynqServer := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: rdc.NodeAddress()},
@@ -18,7 +18,7 @@ func initiateAsynqServer(rdc redis.Client) (*asynq.Server, *asynq.RedisClientOpt
 }
 
 // Create a scheduler that adds batch_training_reminders to Redis as JSON at the top of every hour (UTC)
-func AsynqScheduler(asynqRedisClientOpt *asynq.RedisClientOpt) error {
+func CreateAsynqTrainingReminderScheduler(asynqRedisClientOpt *asynq.RedisClientOpt) error {
 	scheduler := asynq.NewScheduler(asynqRedisClientOpt, &asynq.SchedulerOpts{})
 	task := asynq.NewTask("task:batch_training_reminders", nil)
 
@@ -29,5 +29,4 @@ func AsynqScheduler(asynqRedisClientOpt *asynq.RedisClientOpt) error {
 
 	scheduler.Start()
 	return nil
-
 }

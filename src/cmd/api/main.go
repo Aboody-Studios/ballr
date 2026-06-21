@@ -22,13 +22,15 @@ import (
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
 	progresshttp "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/http"
+	progressworker "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/worker"
 	progressinfrastructure "github.com/Aboody-Studios/ballr/src/internal/progress/infrastructure"
 	shareddelivery "github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
-	"github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
+	sharedinfrastructure "github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -43,13 +45,13 @@ func main() {
 		log.Fatal("JWT_SECRET environment variable is required")
 	}
 
-	rdb := infrastructure.InitiateRedis()
-	db, dbErr := infrastructure.InitiatePostgres()
+	rdb := sharedinfrastructure.InitiateRedis()
+	db, dbErr := sharedinfrastructure.InitiatePostgres()
 	if dbErr != nil {
 		log.Fatalf("database connection error: %v", dbErr)
 	}
 
-	if err := infrastructure.RunMigrations(db); err != nil {
+	if err := sharedinfrastructure.RunMigrations(db); err != nil {
 		log.Fatalf("migration failed: %v", err)
 	}
 
@@ -95,11 +97,15 @@ func main() {
 	achievementRepo := &progressinfrastructure.PostgresAchievementRepository{DB: db}
 	eventLogRepo := &progressinfrastructure.PostgresEventLogRepository{DB: db}
 	leaderboardRepo := &progressinfrastructure.RedisLeaderboardRepo{Client: rdb}
-	gamificationService := progressapplication.NewGamificationService(progressRepo, achievementRepo, eventLogRepo, leaderboardRepo)
+	progressUserBridgeRepo := &progressinfrastructure.ProgressUserBridgeDB{DB: db}
+	transactionRepo := &progressinfrastructure.TransactionRepo{DB: db}
+	eventPublisher := events.NewRedisPublisher(rdb)
+	gamificationService := progressapplication.NewGamificationService(progressRepo, achievementRepo, eventLogRepo,
+		leaderboardRepo, progressUserBridgeRepo, transactionRepo, eventPublisher)
 	progressHandler := progresshttp.NewProgressHandler(gamificationService)
+	trainingReminderHandler := progressworker.NewTrainingReminderHandler(gamificationService)
 
 	// --- Event Wiring ---
-	eventPublisher := events.NewRedisPublisher(rdb)
 	uploadService.SetEventPublisher(eventPublisher)
 	analysisService.SetEventPublisher(eventPublisher)
 	analysisWorker.SetEventPublisher(eventPublisher)
@@ -145,7 +151,18 @@ func main() {
 	}
 	go sweeper.SweepStuckMatches(context.Background())
 
-	// --- Server ---
+	// --- Asynq ---
+	asynqServer, asynqRedisClient := sharedinfrastructure.InitiateAsynqServer(*rdb)
+	if err := sharedinfrastructure.CreateAsynqTrainingReminderScheduler(asynqRedisClient); err != nil {
+		log.Printf("asynq scheduler error: %v", err)
+	}
+	asynqMux := asynq.NewServeMux()
+	asynqMux.HandleFunc("batch_training_reminders", trainingReminderHandler.HandleBatchTrainingReminders)
+	if err := asynqServer.Start(asynqMux); err != nil {
+		log.Printf("asynq server initiation problem: %v", err)
+	}
+
+	// --- Echo Server ---
 	echoServer := echo.New()
 	echoServer.Validator = validator.New()
 	echoServer.Use(echomw.RequestLogger())
@@ -228,6 +245,7 @@ func main() {
 	log.Println("shutting down server...")
 
 	stopConsumer()
+	asynqServer.Stop()
 	stopWorker()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

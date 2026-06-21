@@ -83,7 +83,11 @@ type ProgressSummary struct {
 	Rank             int
 }
 
-// LeaderboardEntry represents a single entry in the leaderboard.
+type NotificationTarget struct {
+	ID                string
+	NotificationToken string
+}
+
 type LeaderboardEntry struct {
 	Rank        int
 	UserID      string

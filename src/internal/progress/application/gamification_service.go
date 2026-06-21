@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	userDomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	progressDomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/google/uuid"
@@ -15,13 +14,13 @@ import (
 // achievements, streaks, and leaderboards for the Progress bounded context.
 // Something as infra for the orb app aboody showed us
 type GamificationService struct {
-	progressRepo       progressDomain.ProgressRepository
-	achievementRepo    progressDomain.AchievementRepository
-	eventLogRepo       progressDomain.EventLogRepository
-	leaderboardRepo    progressDomain.LeaderboardRepository
-	userRepo           userDomain.UserRepository
-	TransactionManager progressDomain.TransactionManager
-	EventPublisher     events.Publisher
+	progressRepo           progressDomain.ProgressRepository
+	achievementRepo        progressDomain.AchievementRepository
+	eventLogRepo           progressDomain.EventLogRepository
+	leaderboardRepo        progressDomain.LeaderboardRepository
+	progressUserBridgeRepo progressDomain.ProgressUserBridgeRepository
+	transactionManager     progressDomain.TransactionManager
+	EventPublisher         events.Publisher
 }
 
 // NewGamificationService creates a new gamification service with required dependencies.
@@ -30,12 +29,18 @@ func NewGamificationService(
 	achievementRepo progressDomain.AchievementRepository,
 	eventLogRepo progressDomain.EventLogRepository,
 	leaderboardRepo progressDomain.LeaderboardRepository,
+	progressUserBridgeRepo progressDomain.ProgressUserBridgeRepository,
+	transactionManager progressDomain.TransactionManager,
+	eventPublisher events.Publisher,
 ) *GamificationService {
 	return &GamificationService{
-		progressRepo:    progressRepo,
-		achievementRepo: achievementRepo,
-		eventLogRepo:    eventLogRepo,
-		leaderboardRepo: leaderboardRepo,
+		progressRepo:           progressRepo,
+		achievementRepo:        achievementRepo,
+		eventLogRepo:           eventLogRepo,
+		leaderboardRepo:        leaderboardRepo,
+		progressUserBridgeRepo: progressUserBridgeRepo,
+		transactionManager:     transactionManager,
+		EventPublisher:         eventPublisher,
 	}
 }
 
@@ -45,7 +50,7 @@ func NewGamificationService(
 func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Event) error {
 	var progress *progressDomain.Progress
 
-	if err := gs.TransactionManager.Transact(ctx, func(ctx context.Context) error {
+	if err := gs.transactionManager.Transact(ctx, func(ctx context.Context) error {
 		innerScopeProgress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
 		if err != nil {
 			id := fmt.Sprintf("prog_%d", time.Now().UnixNano())
@@ -92,7 +97,7 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 }
 
 func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, event events.Event) error {
-	if err := gs.TransactionManager.Transact(ctx, func(ctx context.Context) error {
+	if err := gs.transactionManager.Transact(ctx, func(ctx context.Context) error {
 
 		progress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
 		if err != nil {
@@ -127,7 +132,8 @@ func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, ev
 
 // checkAchievements evaluates if user qualifies for any new achievements.
 // Checks against all achievement criteria and returns newly unlocked achievements.
-func (s *GamificationService) checkAchievements(ctx context.Context, userID string, progress *progressDomain.Progress, recentEvent events.EventType) ([]*progressDomain.Achievement, error) {
+func (s *GamificationService) checkAchievements(ctx context.Context, userID string,
+	progress *progressDomain.Progress, recentEvent events.EventType) ([]*progressDomain.Achievement, error) {
 	var newAchievements []*progressDomain.Achievement
 
 	existingAchievements, err := s.achievementRepo.FindByUserID(ctx, userID)
@@ -258,7 +264,7 @@ func (s *GamificationService) GetLeaderboard(ctx context.Context, offset, limit 
 		userIDs[i] = z.Member.(string)
 	}
 
-	nameMap, err := s.userRepo.GetUsernames(ctx, userIDs)
+	nameMap, err := s.progressUserBridgeRepo.GetUsernames(ctx, userIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -299,4 +305,13 @@ func contains(slice []progressDomain.AchievementType, item progressDomain.Achiev
 		}
 	}
 	return false
+}
+
+func (s *GamificationService) Get8pmAndTrainingDayUsersService(ctx context.Context) ([]progressDomain.NotificationTarget, error) {
+	targets, err := s.progressUserBridgeRepo.GetEightPmAndTrainingDayUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return targets, nil
 }

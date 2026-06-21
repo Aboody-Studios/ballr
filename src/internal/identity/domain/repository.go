@@ -18,8 +18,6 @@ type UserRepository interface {
 
 	//Update existing user data in the database
 	Update(ctx context.Context, user *User) error
-
-	GetUsernames(ctx context.Context, userIDs []string) (map[string]string, error)
 }
 
 // ErrUserNotFound is returned when a user lookup fails.

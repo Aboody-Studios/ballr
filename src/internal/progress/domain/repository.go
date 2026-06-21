@@ -11,8 +11,13 @@ type ProgressRepository interface {
 	// Save creates or updates a user's progress record.
 	Save(ctx context.Context, progress *Progress) error
 
-	// FindByUserID retrieves the progress record for a specific user.
 	FindByUserID(ctx context.Context, userID string) (*Progress, error)
+}
+
+type ProgressUserBridgeRepository interface {
+	GetEightPmAndTrainingDayUsers(ctx context.Context) ([]NotificationTarget, error)
+
+	GetUsernames(ctx context.Context, userIDs []string) (map[string]string, error)
 }
 
 // AchievementRepository defines the contract for achievement persistence.
