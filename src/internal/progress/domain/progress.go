@@ -165,8 +165,16 @@ func (e *ProgressError) Error() string { return e.Message }
 
 // CalculatePoints returns the points value for a given event type.
 // This is a helper function used by the application service.
-func CalculatePoints(eventType events.EventType) (int, bool) {
-	points, ok := events.PointValue[eventType]
+func CalculatePoints(event events.Event) (int, bool) {
+	if event.Type == events.EventAchievementCompleted{
+		points, ok := event.Metadata["points"].(float64)
+		if !ok {
+			return 0, false
+		}
+		return int(points), true
+	}
+
+	points, ok := events.PointValue[event.Type]
 	return points, ok
 }
 

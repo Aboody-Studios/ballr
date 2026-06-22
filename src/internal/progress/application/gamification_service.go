@@ -46,8 +46,7 @@ func NewGamificationService(
 
 // ProcessEvent handles a gamification event and calculates points/achievements.
 // This is the core entry point for the event-based gamification system.
-// TODO!: Make this function only for processing events with points (?)
-func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Event) error {
+func (gs *GamificationService) GrantPoints(ctx context.Context, event events.Event) error {
 	var progress *progressDomain.Progress
 
 	if err := gs.transactionManager.Transact(ctx, func(ctx context.Context) error {
@@ -58,12 +57,14 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 		}
 		progress = innerScopeProgress
 
-		points, ok := progressDomain.CalculatePoints(event.Type)
+		points, ok := progressDomain.CalculatePoints(event)
 
 		if ok {
 			timeNow := time.Now()
 			progress.UpdateStreak(timeNow)
 			progress.AddPoints(points, timeNow)
+		} else {
+			return fmt.Errorf("achievement points aren't of type int")
 		}
 
 		if err := gs.progressRepo.Save(ctx, progress); err != nil {
@@ -80,17 +81,10 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 		return fmt.Errorf("Transaction failed: %w", err)
 	}
 
-	// Publish an event for checking if rewarding an achievement to the user is applicable or not.
-	checkAchievementsEvent := events.Event{
-		ID:        uuid.NewString(),
-		Type:      events.EventAchievementCheckRequested,
-		UserID:    event.UserID,
-		Timestamp: time.Now(),
-	}
-	gs.EventPublisher.PublishEvent(ctx, checkAchievementsEvent)
+	gs.CheckAndAwardAchievements(ctx, event)
 
 	if err := gs.leaderboardRepo.UpdateScore(ctx, event.UserID, progress.TotalPoints); err != nil {
-		fmt.Errorf("failed to update score: %w", err)
+		return fmt.Errorf("failed to update score: %w", err)
 	}
 
 	return nil
@@ -98,7 +92,6 @@ func (gs *GamificationService) ProcessEvent(ctx context.Context, event events.Ev
 
 func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, event events.Event) error {
 	if err := gs.transactionManager.Transact(ctx, func(ctx context.Context) error {
-
 		progress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
 		if err != nil {
 			return fmt.Errorf("Failed to get progress: %w", err)
@@ -113,9 +106,6 @@ func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, ev
 			if err := gs.achievementRepo.Save(ctx, achievement); err != nil {
 				return fmt.Errorf("failed to save achievement: %w", err)
 			}
-
-			bonusPoints := achievement.PointValue()
-			progress.AddPoints(bonusPoints, time.Now())
 		}
 
 		if err := gs.progressRepo.Save(ctx, progress); err != nil {
@@ -126,6 +116,8 @@ func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, ev
 	}); err != nil {
 		return err
 	}
+
+	//TODO! Iterate over new achievements here and publish events here instead of inside checkAchievements as it is inside a transaction
 
 	return nil
 }
@@ -160,10 +152,10 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 			100,
 		},
 		{
+			//TODO!: currentStreak % 7 shouldn't be added to newAchievements (probably)
 			progressDomain.AchievementTypeStreakWeek,
 			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
-				return p.CurrentStreak >= 7 &&
-					!contains(existing, progressDomain.AchievementTypeStreakWeek)
+				return p.CurrentStreak % 7 == 0
 			},
 			500,
 		},
@@ -196,6 +188,18 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 	for _, c := range criteria {
 		if c.checker(progress, existingTypes) {
 			achievement := progressDomain.NewAchievement(userID, c.typ, c.points)
+			eventMetadata := map[string]any{
+				"points" : c.points,
+			}
+
+			achievCompEvent := events.Event{
+				ID: uuid.NewString(),
+				Type: events.EventAchievementCompleted,
+				UserID: userID,
+				Timestamp: time.Now(),
+				Metadata: eventMetadata,
+			}
+			s.EventPublisher.PublishEvent(ctx, achievCompEvent)
 			newAchievements = append(newAchievements, achievement)
 		}
 	}

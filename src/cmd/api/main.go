@@ -122,20 +122,25 @@ func main() {
 		if !ok {
 			return fmt.Errorf("missing video_url")
 		}
-		gamificationService.ProcessEvent(ctx, event)
-		return analysisService.StartAnalysis(ctx, matchID, videoURL)
+		if err := analysisService.StartAnalysis(ctx, matchID, videoURL); err != nil {
+			return fmt.Errorf("start analysis failed")
+		}
+		return gamificationService.GrantPoints(ctx, event)
 	})
 	eventConsumer.HandleFunc(events.EventMatchUploaded, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event)
+		return gamificationService.GrantPoints(ctx, event)
 	})
 	eventConsumer.HandleFunc(events.EventAnalysisCompleted, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event)
+		return gamificationService.GrantPoints(ctx, event)
 	})
 	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, event events.Event) error {
-		return gamificationService.ProcessEvent(ctx, event)
+		return gamificationService.GrantPoints(ctx, event)
 	})
 	eventConsumer.HandleFunc(events.EventAchievementCheckRequested, func(ctx context.Context, event events.Event) error {
 		return gamificationService.CheckAndAwardAchievements(ctx, event)
+	})
+	eventConsumer.HandleFunc(events.EventAchievementCompleted, func(ctx context.Context, event events.Event) error {
+		return gamificationService.GrantPoints(ctx, event)
 	})
 
 	consumerCtx, stopConsumer := context.WithCancel(context.Background())
