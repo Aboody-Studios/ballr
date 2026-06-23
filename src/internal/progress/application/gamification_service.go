@@ -48,6 +48,7 @@ func NewGamificationService(
 // This is the core entry point for the event-based gamification system.
 func (gs *GamificationService) GrantPoints(ctx context.Context, event events.Event) error {
 	var progress *progressDomain.Progress
+	var streakUpdated bool
 
 	if err := gs.transactionManager.Transact(ctx, func(ctx context.Context) error {
 		innerScopeProgress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
@@ -61,7 +62,7 @@ func (gs *GamificationService) GrantPoints(ctx context.Context, event events.Eve
 
 		if ok {
 			timeNow := time.Now()
-			progress.UpdateStreak(timeNow)
+			streakUpdated = progress.UpdateStreak(timeNow)
 			progress.AddPoints(points, timeNow)
 		} else {
 			return fmt.Errorf("achievement points aren't of type int")
@@ -81,7 +82,9 @@ func (gs *GamificationService) GrantPoints(ctx context.Context, event events.Eve
 		return fmt.Errorf("Transaction failed: %w", err)
 	}
 
-	gs.CheckAndAwardAchievements(ctx, event)
+	if err := gs.initiateAchievementsCheckAndAward(ctx, event, streakUpdated); err != nil {
+		return fmt.Errorf("achievements failure: %w", err)
+	}
 
 	if err := gs.leaderboardRepo.UpdateScore(ctx, event.UserID, progress.TotalPoints); err != nil {
 		return fmt.Errorf("failed to update score: %w", err)
@@ -90,42 +93,44 @@ func (gs *GamificationService) GrantPoints(ctx context.Context, event events.Eve
 	return nil
 }
 
-func (gs *GamificationService) CheckAndAwardAchievements(ctx context.Context, event events.Event) error {
+func (gs *GamificationService) initiateAchievementsCheckAndAward(ctx context.Context, event events.Event, streakUpdated bool) error {
+	var newAchievements []*progressDomain.Achievement
 	if err := gs.transactionManager.Transact(ctx, func(ctx context.Context) error {
 		progress, err := gs.progressRepo.FindByUserID(ctx, event.UserID)
 		if err != nil {
 			return fmt.Errorf("Failed to get progress: %w", err)
 		}
 
-		newAchievements, err := gs.checkAchievements(ctx, event.UserID, progress, event.Type)
+		newAchievements, err = gs.checkAchievements(ctx, event.UserID, progress, event.Type, streakUpdated)
 		if err != nil {
 			return fmt.Errorf("failed to check achievements: %w", err)
 		}
 
 		for _, achievement := range newAchievements {
-			if err := gs.achievementRepo.Save(ctx, achievement); err != nil {
-				return fmt.Errorf("failed to save achievement: %w", err)
+			if achievement.Badge {
+				if err := gs.achievementRepo.Save(ctx, achievement); err != nil {
+					return fmt.Errorf("failed to save achievement: %w", err)
+				}
 			}
 		}
 
 		if err := gs.progressRepo.Save(ctx, progress); err != nil {
 			return fmt.Errorf("failed to save progress: %w", err)
 		}
-
 		return nil
+
 	}); err != nil {
 		return err
 	}
 
-	//TODO! Iterate over new achievements here and publish events here instead of inside checkAchievements as it is inside a transaction
-
+	gs.awardNewAchievements(ctx, newAchievements)
 	return nil
 }
 
 // checkAchievements evaluates if user qualifies for any new achievements.
 // Checks against all achievement criteria and returns newly unlocked achievements.
 func (s *GamificationService) checkAchievements(ctx context.Context, userID string,
-	progress *progressDomain.Progress, recentEvent events.EventType) ([]*progressDomain.Achievement, error) {
+	progress *progressDomain.Progress, recentEvent events.EventType, streakUpdated bool) ([]*progressDomain.Achievement, error) {
 	var newAchievements []*progressDomain.Achievement
 
 	existingAchievements, err := s.achievementRepo.FindByUserID(ctx, userID)
@@ -139,9 +144,10 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 	}
 
 	criteria := []struct {
-		typ     progressDomain.AchievementType
-		checker func(*progressDomain.Progress, []progressDomain.AchievementType) bool
-		points  int
+		typ       progressDomain.AchievementType
+		checker   func(*progressDomain.Progress, []progressDomain.AchievementType) bool
+		points    int
+		badgebool bool
 	}{
 		{
 			progressDomain.AchievementTypeFirstUpload,
@@ -150,14 +156,15 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 					!contains(existing, progressDomain.AchievementTypeFirstUpload)
 			},
 			100,
+			true,
 		},
 		{
-			//TODO!: currentStreak % 7 shouldn't be added to newAchievements (probably)
 			progressDomain.AchievementTypeStreakWeek,
 			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
-				return p.CurrentStreak % 7 == 0
+				return p.CurrentStreak%7 == 0 && streakUpdated == true
 			},
 			500,
+			false,
 		},
 		{
 			progressDomain.AchievementTypeStreakMonth,
@@ -166,6 +173,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 					!contains(existing, progressDomain.AchievementTypeStreakMonth)
 			},
 			2000,
+			true,
 		},
 		{
 			progressDomain.AchievementTypeAnalysisMaster,
@@ -174,6 +182,7 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 					!contains(existing, progressDomain.AchievementTypeAnalysisMaster)
 			},
 			1000,
+			true,
 		},
 		{
 			progressDomain.AchievementTypeDrillCompleter,
@@ -182,29 +191,36 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 					!contains(existing, progressDomain.AchievementTypeDrillCompleter)
 			},
 			250,
+			true,
 		},
 	}
 
 	for _, c := range criteria {
 		if c.checker(progress, existingTypes) {
-			achievement := progressDomain.NewAchievement(userID, c.typ, c.points)
-			eventMetadata := map[string]any{
-				"points" : c.points,
-			}
-
-			achievCompEvent := events.Event{
-				ID: uuid.NewString(),
-				Type: events.EventAchievementCompleted,
-				UserID: userID,
-				Timestamp: time.Now(),
-				Metadata: eventMetadata,
-			}
-			s.EventPublisher.PublishEvent(ctx, achievCompEvent)
+			achievement := progressDomain.NewAchievement(userID, c.typ, c.points, c.badgebool)
 			newAchievements = append(newAchievements, achievement)
 		}
 	}
 
 	return newAchievements, nil
+}
+
+func (gs *GamificationService) awardNewAchievements(ctx context.Context, newAchievements []*progressDomain.Achievement) {
+	for _, achievement := range newAchievements {
+		metadata := map[string]any{
+			"points": achievement.PointsValue,
+		}
+
+		achievEvent := events.Event{
+			ID:        uuid.NewString(),
+			UserID:    achievement.UserID,
+			Type:      events.EventAchievementCompleted,
+			Metadata:  metadata,
+			Timestamp: time.Now(),
+		}
+
+		gs.EventPublisher.PublishEvent(ctx, achievEvent)
+	}
 }
 
 // GetProgressSummary returns the user's complete progress summary.

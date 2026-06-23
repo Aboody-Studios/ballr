@@ -136,9 +136,6 @@ func main() {
 	eventConsumer.HandleFunc(events.EventCoachInteraction, func(ctx context.Context, event events.Event) error {
 		return gamificationService.GrantPoints(ctx, event)
 	})
-	eventConsumer.HandleFunc(events.EventAchievementCheckRequested, func(ctx context.Context, event events.Event) error {
-		return gamificationService.CheckAndAwardAchievements(ctx, event)
-	})
 	eventConsumer.HandleFunc(events.EventAchievementCompleted, func(ctx context.Context, event events.Event) error {
 		return gamificationService.GrantPoints(ctx, event)
 	})

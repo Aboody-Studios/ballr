@@ -33,6 +33,7 @@ type Achievement struct {
 	Type        AchievementType `gorm:"uniqueIndex:idx_user_achievement;not null"`
 	UnlockedAt  time.Time       `gorm:"autoCreateTime"`
 	PointsValue int
+	Badge       bool
 }
 
 // AchievementType defines the types of achievements available in the system.
@@ -121,12 +122,12 @@ func (p *Progress) AddPoints(points int, t time.Time) {
 // If the date is consecutive to LastActive, increments streak.
 // If the date is the same as LastActive, does nothing.
 // If the date is not consecutive, resets streak to 1.
-func (p *Progress) UpdateStreak(activityDate time.Time) {
+func (p *Progress) UpdateStreak(activityDate time.Time) bool {
 	lastActiveYear, lastActiveMonth, LastActiveDay := p.LastActive.Date()
 	currentActivityYear, currentActivityMonth, currentActivityDay := activityDate.Date()
 
 	if lastActiveYear == currentActivityYear && lastActiveMonth == currentActivityMonth && LastActiveDay == currentActivityDay {
-		return
+		return false
 	}
 
 	nextDay := time.Date(lastActiveYear, lastActiveMonth, LastActiveDay, 0, 0, 0, 0, p.LastActive.Location()).Add(24 * time.Hour)
@@ -140,6 +141,7 @@ func (p *Progress) UpdateStreak(activityDate time.Time) {
 
 	p.LastActive = activityDate
 	p.UpdatedAt = time.Now()
+	return true
 }
 
 // NextStreakExpiry returns the time when the current streak will expire if no activity occurs.
@@ -166,7 +168,7 @@ func (e *ProgressError) Error() string { return e.Message }
 // CalculatePoints returns the points value for a given event type.
 // This is a helper function used by the application service.
 func CalculatePoints(event events.Event) (int, bool) {
-	if event.Type == events.EventAchievementCompleted{
+	if event.Type == events.EventAchievementCompleted {
 		points, ok := event.Metadata["points"].(float64)
 		if !ok {
 			return 0, false
@@ -194,13 +196,14 @@ func NewEventLog(event events.Event, points int) *EventLog {
 }
 
 // NewAchievement creates a new achievement for a user.
-func NewAchievement(userID string, achievementType AchievementType, points int) *Achievement {
+func NewAchievement(userID string, achievementType AchievementType, points int, badgeBool bool) *Achievement {
 	return &Achievement{
 		ID:          generateID(),
 		UserID:      userID,
 		Type:        achievementType,
 		UnlockedAt:  time.Now(),
 		PointsValue: points,
+		Badge:       badgeBool,
 	}
 }
 
