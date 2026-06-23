@@ -93,9 +93,14 @@ func (s *Service) Chat(ctx context.Context, userID, sessionID, message string) (
 		fmt.Printf("failed to save conversation history: %v\n", err)
 	}
 
-	//TODO!: Create EventCoachInteraction struct here
+	coachInteractionEvent := events.Event{
+		ID:        uuid.NewString(),
+		Type:      events.EventCoachInteraction,
+		UserID:    userID,
+		Timestamp: time.Now(),
+	}
 
-	if err := s.eventPublisher.PublishEvent(ctx, userID, events.EventCoachInteraction, nil); err != nil {
+	if err := s.eventPublisher.PublishEvent(ctx, coachInteractionEvent); err != nil {
 		fmt.Printf("failed to publish coach interaction event: %v\n", err)
 	}
 
