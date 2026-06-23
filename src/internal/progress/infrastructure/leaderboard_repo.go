@@ -10,7 +10,6 @@ type RedisLeaderboardRepo struct {
 	Client *redis.Client
 }
 
-// TODO!: See whether global_leaderboard does actually get created like this using ZAdd or not.
 func (rlr RedisLeaderboardRepo) UpdateScore(ctx context.Context, userID string, points int) error {
 	err := rlr.Client.ZAdd(ctx, "global_leaderboard",
 		redis.Z{

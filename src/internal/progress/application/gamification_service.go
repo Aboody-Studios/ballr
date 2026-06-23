@@ -159,6 +159,10 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 			true,
 		},
 		{
+			// if p.CurrentStreak % 7 == 0 and streakUpdated is false this means that the user has already been awarded points for 
+			// AchievementTypeStreakWeek today, i.e. if today is the 7th consecutive day for the user. 
+			// if streakUpdated is true, this means that it has just been updated currently, and that the still has NOT been awarded
+			// the points yet. 
 			progressDomain.AchievementTypeStreakWeek,
 			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return p.CurrentStreak%7 == 0 && streakUpdated == true
