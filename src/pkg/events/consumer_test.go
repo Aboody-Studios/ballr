@@ -33,7 +33,7 @@ func TestRedisPublisher_PublishEvent(t *testing.T) {
 	publisher := NewRedisPublisher(rdb)
 
 	ctx := context.Background()
-	err := publisher.PublishEvent(ctx, "user-1", EventMatchUploaded, map[string]interface{}{"size": "10MB"})
+	err := publisher.PublishEvent(ctx, Event{Type: EventMatchUploaded, UserID: "user-1", Metadata: map[string]interface{}{"size": "10MB"}})
 	if err != nil {
 		t.Fatalf("PublishEvent failed: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestRedisPublisher_MultipleEvents(t *testing.T) {
 	ctx := context.Background()
 	events := []struct {
 		userID    string
-		eventType string
+		eventType EventType
 	}{
 		{"user-1", EventMatchUploaded},
 		{"user-2", EventAnalysisCompleted},
@@ -88,7 +88,7 @@ func TestRedisPublisher_MultipleEvents(t *testing.T) {
 	}
 
 	for _, e := range events {
-		if err := publisher.PublishEvent(ctx, e.userID, e.eventType, nil); err != nil {
+		if err := publisher.PublishEvent(ctx, Event{Type: e.eventType, UserID: e.userID}); err != nil {
 			t.Fatalf("PublishEvent failed: %v", err)
 		}
 	}
@@ -124,7 +124,7 @@ func TestConsumer_DispatchToHandler(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	err := publisher.PublishEvent(context.Background(), "user-1", EventMatchUploaded, nil)
+	err := publisher.PublishEvent(context.Background(), Event{Type: EventMatchUploaded, UserID: "user-1"})
 	if err != nil {
 		t.Fatalf("PublishEvent failed: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestConsumer_HandlerErrorGoesToDeadLetter(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	err := publisher.PublishEvent(context.Background(), "user-1", EventMatchUploaded, nil)
+	err := publisher.PublishEvent(context.Background(), Event{Type: EventMatchUploaded, UserID: "user-1"})
 	if err != nil {
 		t.Fatalf("PublishEvent failed: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestConsumer_NoHandlerForTypeStillAcks(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	err := publisher.PublishEvent(context.Background(), "user-1", EventAnalysisCompleted, nil)
+	err := publisher.PublishEvent(context.Background(), Event{Type: EventAnalysisCompleted, UserID: "user-1"})
 	if err != nil {
 		t.Fatalf("PublishEvent failed: %v", err)
 	}
@@ -257,9 +257,9 @@ func TestConsumer_EventTypeRouting(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	publisher.PublishEvent(context.Background(), "user-1", EventMatchUploaded, nil)
-	publisher.PublishEvent(context.Background(), "user-1", EventAnalysisCompleted, nil)
-	publisher.PublishEvent(context.Background(), "user-2", EventMatchUploaded, nil)
+	publisher.PublishEvent(context.Background(), Event{Type: EventMatchUploaded, UserID: "user-1"})
+	publisher.PublishEvent(context.Background(), Event{Type: EventAnalysisCompleted, UserID: "user-1"})
+	publisher.PublishEvent(context.Background(), Event{Type: EventMatchUploaded, UserID: "user-2"})
 
 	time.Sleep(200 * time.Millisecond)
 

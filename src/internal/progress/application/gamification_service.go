@@ -7,7 +7,6 @@ import (
 
 	progressDomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
-	"github.com/google/uuid"
 )
 
 // GamificationService handles progress tracking, points calculation,
@@ -63,7 +62,7 @@ func (gs *GamificationService) GrantPoints(ctx context.Context, event events.Eve
 		if ok {
 			timeNow := time.Now()
 			streakUpdated = progress.UpdateStreak(timeNow)
-			progress.AddPoints(points, timeNow)
+			progress.AddPoints(points)
 		} else {
 			return fmt.Errorf("achievement points aren't of type int")
 		}
@@ -159,10 +158,10 @@ func (s *GamificationService) checkAchievements(ctx context.Context, userID stri
 			true,
 		},
 		{
-			// if p.CurrentStreak % 7 == 0 and streakUpdated is false this means that the user has already been awarded points for 
-			// AchievementTypeStreakWeek today, i.e. if today is the 7th consecutive day for the user. 
+			// if p.CurrentStreak % 7 == 0 and streakUpdated is false this means that the user has already been awarded points for
+			// AchievementTypeStreakWeek today, i.e. if today is the 7th consecutive day for the user.
 			// if streakUpdated is true, this means that it has just been updated currently, and that the still has NOT been awarded
-			// the points yet. 
+			// the points yet.
 			progressDomain.AchievementTypeStreakWeek,
 			func(p *progressDomain.Progress, existing []progressDomain.AchievementType) bool {
 				return p.CurrentStreak%7 == 0 && streakUpdated == true
@@ -215,15 +214,10 @@ func (gs *GamificationService) awardNewAchievements(ctx context.Context, newAchi
 			"points": achievement.PointsValue,
 		}
 
-		achievEvent := events.Event{
-			ID:        uuid.NewString(),
-			UserID:    achievement.UserID,
-			Type:      events.EventAchievementCompleted,
-			Metadata:  metadata,
-			Timestamp: time.Now(),
+		if err := gs.EventPublisher.PublishEvent(ctx, events.Event{Type: events.EventAchievementCompleted, UserID: achievement.UserID, Metadata: metadata}); err != nil {
+			// Log but don't fail the award flow on publish errors.
+			// Publisher failure should not block achievement granting.
 		}
-
-		gs.EventPublisher.PublishEvent(ctx, achievEvent)
 	}
 }
 

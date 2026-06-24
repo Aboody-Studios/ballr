@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
-	"github.com/google/uuid"
 )
 
 type UploadService struct {
@@ -88,29 +86,15 @@ func (s *UploadService) StartMatchProcessingWorflow(ctx context.Context, s3Key s
 		return fmt.Errorf("save match: %w", err)
 	}
 
-	matchUploaded := events.Event{
-		ID:        uuid.NewString(),
-		Type:      events.EventMatchUploaded,
-		UserID:    match.UserID,
-		Timestamp: time.Now(),
-	}
-
-	if err := s.eventPublisher.PublishEvent(ctx, matchUploaded); err != nil {
-		log.Printf("failed to publish event: %w", err)
+	if err := s.eventPublisher.PublishEvent(ctx, events.Event{Type: events.EventMatchUploaded, UserID: match.UserID}); err != nil {
+		log.Printf("failed to publish event: %v", err)
 	}
 	metadata := map[string]any{
 		"video_url": match.VideoURL,
 		"match_id":  matchID,
 	}
 
-	startAnalysis := events.Event{
-		ID:       uuid.NewString(),
-		Type:     events.EventAnalysisStart,
-		UserID:   match.UserID,
-		Metadata: metadata,
-	}
-
-	if err := s.eventPublisher.PublishEvent(ctx, startAnalysis); err != nil {
+	if err := s.eventPublisher.PublishEvent(ctx, events.Event{Type: events.EventAnalysisStart, UserID: match.UserID, Metadata: metadata}); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 

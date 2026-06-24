@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -20,9 +21,15 @@ func NewRedisPublisher(rdb *redis.Client) *RedisPublisher {
 	}
 }
 
-func (rp *RedisPublisher) PublishEvent(ctx context.Context, event Event) error {
+func (rp *RedisPublisher) PublishEvent(ctx context.Context, ev Event) error {
+	if ev.ID == "" {
+		ev.ID = fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	if ev.Timestamp.IsZero() {
+		ev.Timestamp = time.Now()
+	}
 
-	data, err := json.Marshal(event)
+	data, err := json.Marshal(ev)
 	if err != nil {
 		return fmt.Errorf("marshal event: %w", err)
 	}

@@ -113,9 +113,24 @@ func NewProgress(id, userID string) *Progress {
 
 // AddPoints increments the user's total points by the given amount.
 // This is a lower-level operation than RecordEvent - it just adds points without event tracking.
-func (p *Progress) AddPoints(points int, t time.Time) {
+func (p *Progress) AddPoints(points int) {
+	if points <= 0 {
+		return
+	}
 	p.TotalPoints += points
-	p.UpdatedAt = t
+	p.UpdatedAt = time.Now()
+}
+
+// RecordEvent records a gamification event and awards points accordingly.
+// Returns the number of points awarded for the event.
+func (p *Progress) RecordEvent(eventType events.EventType) int {
+	points, ok := events.PointValue[eventType]
+	if !ok {
+		return 0
+	}
+
+	p.AddPoints(points)
+	return points
 }
 
 // UpdateStreak updates the user's streak based on activity date.
@@ -205,6 +220,27 @@ func NewAchievement(userID string, achievementType AchievementType, points int, 
 		PointsValue: points,
 		Badge:       badgeBool,
 	}
+}
+
+// AwardAchievement creates and returns a new Achievement for the progress owner.
+func (p *Progress) AwardAchievement(typ AchievementType) *Achievement {
+	var points int
+	var badge bool
+	switch typ {
+	case AchievementTypeFirstUpload:
+		points = 100
+		badge = true
+	case AchievementTypeStreakWeek:
+		points = 500
+		badge = false
+	default:
+		points = 100
+		badge = false
+	}
+
+	ach := NewAchievement(p.UserID, typ, points, badge)
+	p.AddPoints(points)
+	return ach
 }
 
 // PointValue returns the point value for an achievement.

@@ -29,6 +29,7 @@ type Match struct {
 	VideoURL       string          `gorm:"type:varchar(100)"`
 	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
 	AnalysisFlag   bool            `gorm:"default:false"`
+	AnalysisResult *AnalysisResult `gorm:"type:jsonb;serializer:json"`
 	CreatedAt      time.Time       `gorm:"autoCreateTime"`
 	UpdatedAt      time.Time       `gorm:"autoUpdateTime"`
 	Metadata       MatchMetadata   `gorm:"type:jsonb;serializer:json"`
@@ -91,6 +92,11 @@ func (m *Match) UpdateMatchStatusToProcessing(videoURL string) error {
 	return nil
 }
 
+// MarkUploadComplete transitions the match from UPLOADING -> PROCESSING
+func (m *Match) MarkUploadComplete(videoURL string) error {
+	return m.UpdateMatchStatusToProcessing(videoURL)
+}
+
 // MarkFailed transitions to FAILED state.
 func (m *Match) MarkFailed() error {
 	if m.Status != MatchStatusProcessing {
@@ -103,9 +109,9 @@ func (m *Match) MarkFailed() error {
 
 // CanViewResults returns true if the match has completed analysis.
 // TODO!: Call analysis result table here instead of match
-func (ar *AnalysisResult) CanViewResults(matchID string) bool {
-	//TODO!: Fetch match from database using matchID to check its status
-	return ar.Match.Status == MatchStatusCompleted && ar.AnalysisResult != nil
+// CanViewResults returns true if the match has completed analysis and a result exists.
+func (m *Match) CanViewResults() bool {
+	return m.Status == MatchStatusCompleted && m.AnalysisResult != nil
 }
 
 // GetTopInsight returns the most significant event insight for quick display.
@@ -124,6 +130,38 @@ func (ar *AnalysisResult) CanViewResults(matchID string) bool {
 
 	return ""
 }*/
+
+// SetAnalysisResult transitions to COMPLETED and stores the analysis results.
+func (m *Match) SetAnalysisResult(result *AnalysisResult) error {
+	if m.Status != MatchStatusProcessing {
+		return ErrInvalidStatusTransition
+	}
+	if result == nil {
+		return ErrNilAnalysisResult
+	}
+
+	result.GeneratedAt = time.Now()
+	m.AnalysisResult = result
+	m.Status = MatchStatusCompleted
+	m.UpdatedAt = time.Now()
+
+	return nil
+}
+
+// GetTopInsight returns the first successful insight from analysis events.
+func (m *Match) GetTopInsight() string {
+	if !m.CanViewResults() || len(m.AnalysisResult.Events) == 0 {
+		return ""
+	}
+
+	for _, event := range m.AnalysisResult.Events {
+		if event.Result == EventResultSuccess && event.Insight != "" {
+			return event.Insight
+		}
+	}
+
+	return ""
+}
 
 var (
 	ErrInvalidMatchID          = &MatchError{"match ID is required"}

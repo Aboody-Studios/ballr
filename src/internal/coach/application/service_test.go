@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Aboody-Studios/ballr/src/internal/coach/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
 type mockLLMProvider struct {
@@ -93,10 +94,10 @@ type mockEventPublisher struct {
 	events []string
 }
 
-func (m *mockEventPublisher) PublishEvent(_ context.Context, _ string, eventType string, _ map[string]interface{}) error {
+func (m *mockEventPublisher) PublishEvent(_ context.Context, ev events.Event) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.events = append(m.events, eventType)
+	m.events = append(m.events, string(ev.Type))
 	return nil
 }
 

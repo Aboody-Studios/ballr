@@ -13,6 +13,7 @@ import (
 	iddomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/Aboody-Studios/ballr/src/internal/match/application"
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -23,8 +24,20 @@ type mockStorage struct {
 	err error
 }
 
-func (s *mockStorage) GenerateUploadURL(_ context.Context, _, _ string) (string, error) {
-	return s.url, s.err
+func (s *mockStorage) GeneratePresignedPostObj(_ context.Context, _, _ string) (*domain.PresignedUpload, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &domain.PresignedUpload{URL: s.url, Fields: map[string]string{}}, nil
+}
+
+func (s *mockStorage) GetDownloadURL(_ context.Context, _ string) (string, error) {
+	return "https://mock-download-url", nil
+}
+func (s *mockStorage) DeleteVideo(_ context.Context, _ string) error                { return nil }
+func (s *mockStorage) DownloadVideo(_ context.Context, _, _ string) (string, error) { return "", nil }
+func (s *mockStorage) UploadFile(_ context.Context, key, _, _ string) (string, error) {
+	return "https://mock-bucket/" + key, nil
 }
 
 type mockMatchRepo struct {
@@ -95,6 +108,10 @@ func (r *mockMatchRepo) UnclaimMatch(_ context.Context, matchID string) error {
 	return nil
 }
 
+func (r *mockMatchRepo) GetStuckMatches(_ context.Context, _ time.Time) ([]*domain.Match, error) {
+	return nil, nil
+}
+
 type mockAnaRepo struct{}
 
 func (r *mockAnaRepo) Save(_ context.Context, _ *domain.AnalysisResult) error { return nil }
@@ -116,7 +133,7 @@ func (q *mockMatchQueue) Pop(_ context.Context) (*domain.AnalysisJob, error)  { 
 
 type mockEventPub struct{}
 
-func (p *mockEventPub) PublishEvent(_ context.Context, _ string, _ string, _ map[string]interface{}) error {
+func (p *mockEventPub) PublishEvent(_ context.Context, _ events.Event) error {
 	return nil
 }
 

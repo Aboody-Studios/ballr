@@ -5,8 +5,10 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
 
 type mockMatchRepo struct {
@@ -70,6 +72,10 @@ func (r *mockMatchRepo) UpdateAnalysisID(_ context.Context, _ string, _ string) 
 	return nil
 }
 
+func (r *mockMatchRepo) GetStuckMatches(_ context.Context, _ time.Time) ([]*domain.Match, error) {
+	return nil, nil
+}
+
 func (r *mockMatchRepo) ClaimStuckMatch(_ context.Context, matchID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -127,6 +133,8 @@ func (r *mockAnalysisRepo) UpdateSummary(_ context.Context, _ string, _ domain.A
 	return nil
 }
 
+func (r *mockAnalysisRepo) UpdateAnalysisID(_ context.Context, _ string, _ string) error { return nil }
+
 func (r *mockAnalysisRepo) AddEvent(_ context.Context, _ string, _ domain.MatchEvent) error {
 	return nil
 }
@@ -156,10 +164,10 @@ type mockEventPublisher struct {
 	events []string
 }
 
-func (p *mockEventPublisher) PublishEvent(_ context.Context, _ string, eventType string, _ map[string]interface{}) error {
+func (p *mockEventPublisher) PublishEvent(_ context.Context, ev events.Event) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.events = append(p.events, eventType)
+	p.events = append(p.events, string(ev.Type))
 	return nil
 }
 
@@ -168,8 +176,22 @@ type mockStorageProvider struct {
 	err error
 }
 
-func (s *mockStorageProvider) GenerateUploadURL(_ context.Context, _, _ string) (string, error) {
-	return s.url, s.err
+func (s *mockStorageProvider) GeneratePresignedPostObj(_ context.Context, _, _ string) (*domain.PresignedUpload, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &domain.PresignedUpload{URL: s.url, Fields: map[string]string{}}, nil
+}
+
+func (s *mockStorageProvider) GetDownloadURL(_ context.Context, _ string) (string, error) {
+	return "https://mock-download", nil
+}
+func (s *mockStorageProvider) DeleteVideo(_ context.Context, _ string) error { return nil }
+func (s *mockStorageProvider) DownloadVideo(_ context.Context, _, _ string) (string, error) {
+	return "", nil
+}
+func (s *mockStorageProvider) UploadFile(_ context.Context, key, _, _ string) (string, error) {
+	return "https://mock-bucket/" + key, nil
 }
 
 func TestRequestUploadURL(t *testing.T) {
@@ -181,12 +203,12 @@ func TestRequestUploadURL(t *testing.T) {
 		svc.SetEventPublisher(pub)
 
 		req := &MatchRequest{ShirtNumber: 10, Position: "CM", Size: 1000}
-		url, err := svc.RequestUploadURL(context.Background(), req, "user-1")
+		presigned, err := svc.RequestUploadURL(context.Background(), req, "user-1")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if url != "https://s3.example.com/upload" {
-			t.Errorf("expected upload URL, got %s", url)
+		if presigned.URL != "https://s3.example.com/upload" {
+			t.Errorf("expected upload URL, got %s", presigned.URL)
 		}
 
 		if len(pub.events) != 1 || pub.events[0] != "MATCH_UPLOADED" {
@@ -225,11 +247,11 @@ func TestStartUploadURLService(t *testing.T) {
 	svc := NewUploadService(storage, matchRepo)
 
 	req := &MatchRequest{ShirtNumber: 7, Position: "ST", Size: 500}
-	url, err := svc.StartUploadURLService(context.Background(), req, "user-1")
+	presigned, err := svc.StartUploadURLService(context.Background(), req, "user-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if url == "" {
+	if presigned == nil || presigned.URL == "" {
 		t.Error("expected non-empty URL")
 	}
 }

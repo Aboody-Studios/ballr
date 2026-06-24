@@ -57,6 +57,10 @@ func (r *mockMatchRepo) UpdateAnalysisID(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (r *mockMatchRepo) GetStuckMatches(_ context.Context, _ time.Time) ([]*domain.Match, error) {
+	return nil, nil
+}
+
 func (r *mockMatchRepo) ClaimStuckMatch(_ context.Context, matchID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -103,6 +107,8 @@ func (r *mockAnalysisRepo) FindByID(_ context.Context, _ string) (*domain.Analys
 func (r *mockAnalysisRepo) UpdateSummary(_ context.Context, _ string, _ domain.AnalysisSummary) error {
 	return nil
 }
+
+func (r *mockAnalysisRepo) UpdateAnalysisID(_ context.Context, _ string, _ string) error { return nil }
 
 func (r *mockAnalysisRepo) AddEvent(_ context.Context, _ string, _ domain.MatchEvent) error {
 	return nil
@@ -151,8 +157,27 @@ func (r *mockStorageRepo) UploadFile(_ context.Context, key, _, _ string) (strin
 	return "https://mock-bucket.s3.amazonaws.com/" + key, nil
 }
 
-func (r *mockStorageRepo) GenerateUploadURL(_ context.Context, _, _ string) (string, error) {
-	return "https://mock-upload-url", nil
+func (r *mockStorageRepo) GeneratePresignedPostObj(_ context.Context, _, _ string) (*domain.PresignedUpload, error) {
+	return &domain.PresignedUpload{URL: "https://mock-upload-url", Fields: map[string]string{}}, nil
+}
+
+func (r *mockStorageRepo) GetDownloadURL(_ context.Context, _ string) (string, error) {
+	return "https://mock-download-url", nil
+}
+
+func (r *mockStorageRepo) DeleteVideo(_ context.Context, _ string) error { return nil }
+
+func (r *mockStorageRepo) UploadFile(_ context.Context, key, _, _ string) (string, error) {
+	return "https://mock-bucket.s3.amazonaws.com/" + key, nil
+}
+
+func (r *mockStorageRepo) DownloadVideo(_ context.Context, _, _ string) (string, error) {
+	f, err := os.CreateTemp("", "ballr-test-video-*.mp4")
+	if err != nil {
+		return "", err
+	}
+	f.Close()
+	return f.Name(), nil
 }
 
 func (r *mockStorageRepo) GetDownloadURL(_ context.Context, _ string) (string, error) {

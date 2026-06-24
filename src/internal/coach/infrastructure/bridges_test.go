@@ -56,6 +56,10 @@ func (r *mockMatchRepo) UpdateAnalysisID(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (r *mockMatchRepo) GetStuckMatches(_ context.Context, _ time.Time) ([]*analysisdomain.Match, error) {
+	return nil, nil
+}
+
 func (r *mockMatchRepo) ClaimStuckMatch(_ context.Context, matchID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

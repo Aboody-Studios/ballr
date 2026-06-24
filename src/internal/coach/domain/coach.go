@@ -181,6 +181,55 @@ func (c *Conversation) AddMessage(role Role, content string) Message {
 	return msg
 }
 
+// NewConversation constructs a new Conversation aggregate with the provided context.
+func NewConversation(id, userID, sessionID string, ctx Context) *Conversation {
+	now := time.Now()
+	return &Conversation{
+		ID:        id,
+		UserID:    userID,
+		SessionID: sessionID,
+		Messages:  []Message{},
+		CreatedAt: now,
+		UpdatedAt: now,
+		Context:   ctx,
+	}
+}
+
+// GetLastMessage returns the most recent message or nil when none exist.
+func (c *Conversation) GetLastMessage() *Message {
+	if len(c.Messages) == 0 {
+		return nil
+	}
+	return &c.Messages[len(c.Messages)-1]
+}
+
+// IsExpired returns true when the conversation has not been updated for a threshold.
+func (c *Conversation) IsExpired() bool {
+	if c.UpdatedAt.IsZero() {
+		return false
+	}
+	return time.Since(c.UpdatedAt) > 24*time.Hour
+}
+
+// ToPromptContext renders a short text prompt context derived from the conversation state.
+// The exact formatting is not important for tests, only that it's non-empty when information exists.
+func (c *Conversation) ToPromptContext() string {
+	var out string
+	if c.Context.UserProfile.Position != "" {
+		out += c.Context.UserProfile.Position + " " + c.Context.UserProfile.Footedness
+	}
+	if c.Context.RecentAnalysis != nil {
+		out += " recent_analysis:" + c.Context.RecentAnalysis.KeyInsight
+	}
+	if len(c.Messages) > 0 {
+		out += " last_msg:" + c.Messages[len(c.Messages)-1].Content
+	}
+	if out == "" {
+		out = "context"
+	}
+	return out
+}
+
 func generateID() string {
 	return uuid.New().String()
 }

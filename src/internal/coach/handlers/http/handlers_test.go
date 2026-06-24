@@ -12,6 +12,7 @@ import (
 	"github.com/Aboody-Studios/ballr/src/internal/coach/application"
 	coachdomain "github.com/Aboody-Studios/ballr/src/internal/coach/domain"
 	iddomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v5"
@@ -58,7 +59,7 @@ func (m *mockHistory) FindByUserID(_ context.Context, _ string, _, _ int) ([]*co
 
 type mockCoachEvent struct{}
 
-func (m *mockCoachEvent) PublishEvent(_ context.Context, _ string, _ string, _ map[string]interface{}) error {
+func (m *mockCoachEvent) PublishEvent(_ context.Context, _ events.Event) error {
 	return nil
 }
 
