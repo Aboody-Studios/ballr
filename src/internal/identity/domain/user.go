@@ -8,20 +8,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type Position string
-
-// TODO!: Add position to analysis domain and remove it from here
-const (
-	PositionGK Position = "GK"
-	PositionCB Position = "CB"
-	PositionLB Position = "LB"
-	PositionRB Position = "RB"
-	PositionCM Position = "CM"
-	PositionLW Position = "LW"
-	PositionRW Position = "RW"
-	PositionST Position = "ST"
-)
-
 type Footedness string
 
 const (
@@ -53,7 +39,6 @@ type User struct {
 	OAuthProvider     string
 	FullName          string
 	BirthDate         time.Time
-	Position          Position
 	Footedness        Footedness
 	Goals             string
 	NotifiactionToken string
@@ -67,7 +52,7 @@ type JWTCustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate time.Time, position Position, footedness Footedness, goals string) *User {
+func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate time.Time, footedness Footedness, goals string) *User {
 	user := &User{
 		ID:            id,
 		Email:         email,
@@ -75,7 +60,6 @@ func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate tim
 		AvatarURL:     avatarURL,
 		FullName:      fullName,
 		BirthDate:     birthDate,
-		Position:      position,
 		Footedness:    footedness,
 		Goals:         goals,
 		CreatedAt:     time.Now(),
@@ -83,9 +67,8 @@ func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate tim
 	return user
 }
 
-func (u *User) UpdateProfile(fullName string, position Position, footedness Footedness, goals string) {
+func (u *User) UpdateProfile(fullName string, footedness Footedness, goals string) {
 	u.FullName = fullName
-	u.Position = position
 	u.Footedness = footedness
 	u.Goals = goals
 }
@@ -120,7 +103,6 @@ func (td *TrainingDay) UnmarshalJSON(data []byte) error {
 var (
 	ErrInvalidEmail      = &UserError{"invalid email address"}
 	ErrInvalidBirthDate  = &UserError{"birth date must be in the past"}
-	ErrInvalidPosition   = &UserError{"invalid playing position"}
 	ErrInvalidFootedness = &UserError{"invalid footedness value"}
 )
 

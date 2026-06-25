@@ -3,7 +3,7 @@ package application
 import (
 	"time"
 
-	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+	"github.com/Aboody-Studios/ballr/src/internal/match/domain"
 )
 
 type S3Success struct {

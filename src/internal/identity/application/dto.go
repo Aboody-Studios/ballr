@@ -21,7 +21,6 @@ type ProfileResponse struct {
 	Email         string            `json:"email"`
 	FullName      string            `json:"full_name"`
 	AvatarURL     string            `json:"avatar_url"`
-	Position      domain.Position   `json:"position,omitempty"`
 	Footedness    domain.Footedness `json:"footedness,omitempty"`
 	Goals         string            `json:"goals,omitempty"`
 	BirthDate     time.Time         `json:"birthdate,omitempty"`
@@ -33,7 +32,6 @@ type OnboardingRequest struct {
 	Username     string               `json:"username" validate:"required"`
 	FullName     string               `json:"fullName" validate:"required"`
 	BirthDate    time.Time            `json:"birthdate" validate:"required,ltefield=Now"`
-	Position     domain.Position      `json:"position" validate:"required,oneof=GK CB LB RB CM LW RW ST"`
 	Footedness   domain.Footedness    `json:"footedness" validate:"required,oneof=Left Right Both"`
 	Goals        string               `json:"goals"`
 	TrainingDays []domain.TrainingDay `json:"trainingdays"`

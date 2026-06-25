@@ -36,8 +36,6 @@ type Achievement struct {
 	Badge       bool
 }
 
-// AchievementType defines the types of achievements available in the system.
-// These are part of the ubiquitous language of the gamification domain.
 type AchievementType string
 
 const (
@@ -63,7 +61,6 @@ type EventLog struct {
 	Metadata      map[string]any `gorm:"type:jsonb;serializer:json"`
 }
 
-// EventSummary represents a single event for the activity feed.
 type EventSummary struct {
 	Type      string
 	Points    int
@@ -111,8 +108,6 @@ func NewProgress(id, userID string) *Progress {
 	}
 }
 
-// AddPoints increments the user's total points by the given amount.
-// This is a lower-level operation than RecordEvent - it just adds points without event tracking.
 func (p *Progress) AddPoints(points int) {
 	if points <= 0 {
 		return
@@ -122,7 +117,6 @@ func (p *Progress) AddPoints(points int) {
 }
 
 // RecordEvent records a gamification event and awards points accordingly.
-// Returns the number of points awarded for the event.
 func (p *Progress) RecordEvent(eventType events.EventType) int {
 	points, ok := events.PointValue[eventType]
 	if !ok {

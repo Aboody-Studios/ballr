@@ -41,8 +41,6 @@ func (swpr *Sweeper) SweepStuckMatches(ctx context.Context) error {
 					continue
 				}
 
-				// TODO!: See if metadata is necessary
-
 				eventMap := map[string]any{
 					"match_id":  match.ID,
 					"video_url": match.VideoURL,

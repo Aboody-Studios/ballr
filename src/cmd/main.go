@@ -40,7 +40,7 @@ import (
 func main() {
 	godotenv.Load()
 
-	secretKey := os.Getenv("JWT_SECRET")
+	secretKey := os.Getenv("/mnt/7C6EFE0E6EFDC146/projects/ballr/ballr/.env")
 	if secretKey == "" {
 		log.Fatal("JWT_SECRET environment variable is required")
 	}
@@ -171,7 +171,7 @@ func main() {
 	echoServer.Use(echomw.Recover())
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	var allowedOrigins []string
-
+	// This cors setup is a disaster for production I think
 	if corsOrigins == "" || corsOrigins == "*" {
 		allowedOrigins = []string{"*"}
 		log.Println("WARNING: CORS allows all origins. Set CORS_ORIGINS env var in production.")

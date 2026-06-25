@@ -64,7 +64,6 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 			time.Time{},
 			"",
 			"",
-			"",
 		)
 		if err := s.UserRepo.Create(ctx, dbUser); err != nil {
 			return nil, err
@@ -101,7 +100,6 @@ func (s *Service) GetProfile(ctx context.Context, userID string) (*ProfileRespon
 		Email:         user.Email,
 		FullName:      user.FullName,
 		AvatarURL:     user.AvatarURL,
-		Position:      user.Position,
 		Footedness:    user.Footedness,
 		Goals:         user.Goals,
 		BirthDate:     user.BirthDate,
@@ -118,7 +116,6 @@ func (s *Service) CompleteProfile(ctx context.Context, userID string, req *Onboa
 
 	user.FullName = req.FullName
 	user.BirthDate = req.BirthDate
-	user.Position = req.Position
 	user.Footedness = req.Footedness
 	user.Goals = req.Goals
 	user.TrainingDays = req.TrainingDays

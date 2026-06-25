@@ -44,6 +44,7 @@ type Context struct {
 	TrainingHistory TrainingHistoryContext
 }
 
+// position here
 type UserProfileContext struct {
 	Age        int
 	Position   string

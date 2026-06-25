@@ -18,6 +18,19 @@ const (
 	MatchStatusFailed     MatchStatus = "FAILED"
 )
 
+type Position string
+
+const (
+	PositionGK Position = "GK"
+	PositionCB Position = "CB"
+	PositionLB Position = "LB"
+	PositionRB Position = "RB"
+	PositionCM Position = "CM"
+	PositionLW Position = "LW"
+	PositionRW Position = "RW"
+	PositionST Position = "ST"
+)
+
 // Match is the aggregate root for the Analysis bounded context.
 // TODO!: Remove gorm
 type Match struct {
@@ -25,7 +38,7 @@ type Match struct {
 	User           domain.User     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserID         string          `gorm:"index;not null"`
 	ShirtNumber    uint            `gorm:"not null"`
-	PositionPlayed domain.Position `gorm:"type:varchar(20)"`
+	PositionPlayed Position        `gorm:"type:varchar(20)"`
 	VideoURL       string          `gorm:"type:varchar(100)"`
 	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
 	AnalysisFlag   bool            `gorm:"default:false"`
@@ -40,25 +53,6 @@ type MatchMetadata struct {
 	Duration  int       `json:"duration_seconds"`
 	Score     string    `json:"score,omitempty"`
 	Location  string    `json:"location,omitempty"`
-}
-
-// Test only function
-func NewMatch(id, userID string, shirtNumber uint, positionPlayed domain.Position, metadata MatchMetadata) (*Match, error) {
-	match := &Match{
-		ID:             id,
-		UserID:         userID,
-		ShirtNumber:    shirtNumber,
-		PositionPlayed: positionPlayed,
-		Status:         MatchStatusUploading,
-		UpdatedAt:      time.Now(),
-		Metadata:       metadata,
-	}
-
-	if err := match.Validate(); err != nil {
-		return nil, err
-	}
-
-	return match, nil
 }
 
 func (m *Match) Validate() error {
@@ -179,4 +173,25 @@ type MatchError struct {
 
 func (e *MatchError) Error() string {
 	return e.Message
+}
+
+// --- tests ---
+
+// Test only function
+func NewMatch(id, userID string, shirtNumber uint, positionPlayed Position, metadata MatchMetadata) (*Match, error) {
+	match := &Match{
+		ID:             id,
+		UserID:         userID,
+		ShirtNumber:    shirtNumber,
+		PositionPlayed: positionPlayed,
+		Status:         MatchStatusUploading,
+		UpdatedAt:      time.Now(),
+		Metadata:       metadata,
+	}
+
+	if err := match.Validate(); err != nil {
+		return nil, err
+	}
+
+	return match, nil
 }

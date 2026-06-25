@@ -22,7 +22,6 @@ func (b *CoachUserBridge) GetUserProfile(ctx context.Context, userID string) (*c
 	}
 	return &coachdomain.UserProfile{
 		Age:        user.CalculateAge(),
-		Position:   string(user.Position),
 		Footedness: string(user.Footedness),
 		Goals:      user.Goals,
 	}, nil
