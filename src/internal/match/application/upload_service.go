@@ -68,7 +68,7 @@ func (s *UploadService) RequestUploadURL(ctx context.Context, matchRequest *Matc
 
 // ConfirmUploadByS3Key updates match status to PROCESSING after S3 confirms upload.
 // The s3Key format is: users/{userID}/videos/{matchID}
-func (s *UploadService) StartMatchProcessingWorflow(ctx context.Context, s3Key string) error {
+func (s *UploadService) StartMatchProcessingWorkflow(ctx context.Context, s3Key string) error {
 	matchID, err := parseMatchIDFromS3Key(s3Key)
 	if err != nil {
 		return fmt.Errorf("parse s3 key: %w", err)

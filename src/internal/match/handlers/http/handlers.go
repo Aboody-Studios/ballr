@@ -56,26 +56,6 @@ func (uploadHandler *UploadHandler) PresignedPostObjHandler(echoCtx *echo.Contex
 	return echoCtx.JSON(http.StatusOK, map[string]*domain.PresignedUpload{"presigned_upload_records": presignedUpload})
 }
 
-// UploadURLHandler is a compatibility wrapper that returns a simple URL for tests and older clients.
-func (uploadHandler *UploadHandler) UploadURLHandler(echoCtx *echo.Context) error {
-	var matchRequest application.MatchRequest
-	if err := echoCtx.Bind(&matchRequest); err != nil {
-		return err
-	}
-
-	jwt, err := delivery.ExtractToken(echoCtx)
-	if err != nil {
-		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-	}
-
-	presigned, s3Err := uploadHandler.uploadService.StartUploadURLService(echoCtx.Request().Context(), &matchRequest, jwt.ID)
-	if s3Err != nil {
-		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-	}
-
-	return echoCtx.JSON(http.StatusOK, map[string]string{"URL": presigned.URL})
-}
-
 // GetAnalysisStatusHandler retrieves the current processing status of a match analysis.
 // Statuses: UPLOADING, PROCESSING, COMPLETED, FAILED
 func (analysisHandler *AnalysisHandler) GetAnalysisStatusHandler(c *echo.Context) error {
@@ -131,10 +111,32 @@ func (uploadHandler *UploadHandler) SuccessfulVideoUploadHandler(echoCtx *echo.C
 
 	ctx := echoCtx.Request().Context()
 
-	if err := uploadHandler.uploadService.StartMatchProcessingWorflow(ctx, s3Key); err != nil {
+	if err := uploadHandler.uploadService.StartMatchProcessingWorkflow(ctx, s3Key); err != nil {
 		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update match status"})
 
 	}
 
 	return echoCtx.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// --- tests ---
+
+// UploadURLHandler is a compatibility wrapper that returns a simple URL for tests and older clients.
+func (uploadHandler *UploadHandler) UploadURLHandler(echoCtx *echo.Context) error {
+	var matchRequest application.MatchRequest
+	if err := echoCtx.Bind(&matchRequest); err != nil {
+		return err
+	}
+
+	jwt, err := delivery.ExtractToken(echoCtx)
+	if err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	presigned, s3Err := uploadHandler.uploadService.StartUploadURLService(echoCtx.Request().Context(), &matchRequest, jwt.ID)
+	if s3Err != nil {
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	return echoCtx.JSON(http.StatusOK, map[string]string{"URL": presigned.URL})
 }

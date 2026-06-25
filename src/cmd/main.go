@@ -38,7 +38,7 @@ import (
 )
 
 func main() {
-	godotenv.Load("/mnt/7C6EFE0E6EFDC146/projects/ballr/ballr/.env")
+	godotenv.Load()
 
 	secretKey := os.Getenv("JWT_SECRET")
 	if secretKey == "" {
@@ -171,7 +171,7 @@ func main() {
 	echoServer.Use(echomw.Recover())
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	var allowedOrigins []string
-	// This cors setup is a disaster for production I think
+
 	if corsOrigins == "" || corsOrigins == "*" {
 		allowedOrigins = []string{"*"}
 		log.Println("WARNING: CORS allows all origins. Set CORS_ORIGINS env var in production.")
@@ -197,7 +197,7 @@ func main() {
 	secureGroup.POST("/match/upload-url", uploadHandler.PresignedPostObjHandler)
 	secureGroup.GET("/match/analysis-status/:id", analysisHandler.GetAnalysisStatusHandler)
 	secureGroup.GET("/match/analysis-report/:id", analysisHandler.GetAnalysisReportHandler)
-	echoServer.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)
+	secureGroup.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)
 
 	secureGroup.POST("/coach/chat", coachHandler.ChatHandler)
 	secureGroup.POST("/coach/plan/generate", coachHandler.GeneratePlanHandler)

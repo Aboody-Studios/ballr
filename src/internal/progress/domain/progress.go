@@ -27,7 +27,7 @@ type Progress struct {
 type Achievement struct {
 	ID          string   `gorm:"primaryKey"`
 	Progress    Progress `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	progressID  string
+	ProgressID  string
 	User        domain.User     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserID      string          `gorm:"uniqueIndex:idx_user_achievement;not null"`
 	Type        AchievementType `gorm:"uniqueIndex:idx_user_achievement;not null"`

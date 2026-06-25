@@ -221,8 +221,6 @@ func (gs *GamificationService) awardNewAchievements(ctx context.Context, newAchi
 	}
 }
 
-// GetProgressSummary returns the user's complete progress summary.
-// Includes total points, current streak, and recent activity.
 func (s *GamificationService) GetProgressSummary(ctx context.Context, userID string) (*progressDomain.ProgressSummary, error) {
 	progress, err := s.progressRepo.FindByUserID(ctx, userID)
 	if err != nil {
@@ -311,7 +309,6 @@ func (s *GamificationService) GetUserOffset(ctx context.Context, userID string) 
 	return offset, nil
 }
 
-// GetAchievements returns all achievements for a user.
 func (s *GamificationService) GetAchievements(ctx context.Context, userID string) ([]*progressDomain.Achievement, error) {
 	return s.achievementRepo.FindByUserID(ctx, userID)
 }

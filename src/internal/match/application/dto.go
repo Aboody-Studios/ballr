@@ -6,20 +6,20 @@ import (
 	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 )
 
-type S3Object struct {
-	Key string `json:"key"`
-}
-
-type S3Entity struct {
-	Object S3Object `json:"object"`
+type S3Success struct {
+	Records []S3Record `json:"Records"`
 }
 
 type S3Record struct {
 	S3 S3Entity `json:"s3"`
 }
 
-type S3Success struct {
-	Records []S3Record `json:"Records"`
+type S3Entity struct {
+	Object S3Object `json:"object"`
+}
+
+type S3Object struct {
+	Key string `json:"key"`
 }
 
 type MatchStatus string
