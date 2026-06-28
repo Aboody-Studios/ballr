@@ -11,9 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
-	coachhttp "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
-	coachinfrastructure "github.com/Aboody-Studios/ballr/src/internal/coach/infrastructure"
 	identityapplication "github.com/Aboody-Studios/ballr/src/internal/identity/application"
 	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
@@ -82,15 +79,6 @@ func main() {
 	analysisWorker.Start(workerCtx)
 
 	// --- Coach ---
-	llmProvider, err := coachinfrastructure.NewLLMProvider()
-	if err != nil {
-		log.Fatalf("coach provider: %v", err)
-	}
-	coachAnalysisBridge := coachinfrastructure.NewCoachAnalysisBridge(matchRepo, analysisRepo)
-	coachUserBridge := coachinfrastructure.NewCoachUserBridge(&postgresRepo)
-	convRepo := coachinfrastructure.NewPostgresConversationRepository(db)
-	coachService := coachapplication.NewService(llmProvider, coachAnalysisBridge, coachUserBridge, convRepo)
-	coachHandler := coachhttp.NewCoachHandler(coachService)
 
 	// --- Progress ---
 	progressRepo := &progressinfrastructure.PostgresProgressRepository{DB: db}
@@ -109,7 +97,6 @@ func main() {
 	uploadService.SetEventPublisher(eventPublisher)
 	analysisService.SetEventPublisher(eventPublisher)
 	analysisWorker.SetEventPublisher(eventPublisher)
-	coachService.SetEventPublisher(eventPublisher)
 
 	eventConsumer := events.NewConsumer(rdb, events.DefaultStream, events.DefaultGroup, "api-server")
 	eventConsumer.HandleFunc(events.EventAnalysisStart, func(ctx context.Context, event events.Event) error {
@@ -199,10 +186,7 @@ func main() {
 	secureGroup.GET("/match/analysis-report/:id", analysisHandler.GetAnalysisReportHandler)
 	secureGroup.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)
 
-	secureGroup.POST("/coach/chat", coachHandler.ChatHandler)
-	secureGroup.POST("/coach/plan/generate", coachHandler.GeneratePlanHandler)
-	secureGroup.POST("/coach/diet/generate", coachHandler.GenerateDietHandler)
-	secureGroup.GET("/coach/history", coachHandler.GetHistoryHandler)
+	// add coach handlers here when they are created
 
 	secureGroup.GET("/progress/summary", progressHandler.GetProgressSummaryHandler)
 	secureGroup.GET("/achievements/list", progressHandler.ListAchievementsHandler)

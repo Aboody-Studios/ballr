@@ -38,7 +38,7 @@ func NewUploadHandler(service *application.UploadService) *UploadHandler {
 func (uploadHandler *UploadHandler) PresignedPostObjHandler(echoCtx *echo.Context) error {
 	var matchRequest application.MatchRequest
 	if err := echoCtx.Bind(&matchRequest); err != nil {
-		return err
+		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
 	jwt, err := delivery.ExtractToken(echoCtx)
