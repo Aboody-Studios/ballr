@@ -11,10 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Aboody-Studios/ballr/src/internal/coach/infrastructure"
+	coachhandlers "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
 	identityapplication "github.com/Aboody-Studios/ballr/src/internal/identity/application"
 	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/match/application"
+	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
 	matchhandlers "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
@@ -32,12 +35,13 @@ import (
 	echojwt "github.com/labstack/echo-jwt/v5"
 	"github.com/labstack/echo/v5"
 	echomw "github.com/labstack/echo/v5/middleware"
+	"google.golang.org/genai"
 )
 
 func main() {
-	godotenv.Load()
+	godotenv.Load("/mnt/7C6EFE0E6EFDC146/projects/ballr/ballr/.env")
 
-	secretKey := os.Getenv("/mnt/7C6EFE0E6EFDC146/projects/ballr/ballr/.env")
+	secretKey := os.Getenv("JWT_SECRET")
 	if secretKey == "" {
 		log.Fatal("JWT_SECRET environment variable is required")
 	}
@@ -79,6 +83,14 @@ func main() {
 	analysisWorker.Start(workerCtx)
 
 	// --- Coach ---
+	client, err := genai.NewClient(context.TODO(), &genai.ClientConfig{
+		APIKey:  os.Getenv("GOOGLE_AI_API_KEY"),
+	})
+	geminiCoach := infrastructure.GeminiCoach{Client: *client}
+	coachRepo := infrastructure.PostgresCoachRepo{DB: db}
+	coachService := coachapplication.NewCoachService(&coachRepo, &geminiCoach)
+	coachHandler := coachhandlers.CoachHandler{CoachService: coachService}
+
 
 	// --- Progress ---
 	progressRepo := &progressinfrastructure.PostgresProgressRepository{DB: db}
@@ -186,7 +198,7 @@ func main() {
 	secureGroup.GET("/match/analysis-report/:id", analysisHandler.GetAnalysisReportHandler)
 	secureGroup.POST("/match/upload-success", uploadHandler.SuccessfulVideoUploadHandler)
 
-	// add coach handlers here when they are created
+	secureGroup.POST("/coach/new-user-message", coachHandler.NewUserMessageHandler)
 
 	secureGroup.GET("/progress/summary", progressHandler.GetProgressSummaryHandler)
 	secureGroup.GET("/achievements/list", progressHandler.ListAchievementsHandler)

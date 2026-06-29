@@ -11,8 +11,9 @@ type PostgresAnalysisRepository struct {
 	*gorm.DB
 }
 
+// TODO!: Use ctx ?
 func (r *PostgresAnalysisRepository) Save(ctx context.Context, analysis *domain.AnalysisResult) error {
-	tx := r.DB.Save(&analysis)
+	tx := r.DB.WithContext(ctx).Save(&analysis)
 	return tx.Error
 }
 

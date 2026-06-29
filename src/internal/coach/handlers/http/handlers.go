@@ -9,7 +9,6 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-
 type CoachHandler struct {
 	CoachService application.CoachService
 }
@@ -26,11 +25,10 @@ func (ch CoachHandler) NewUserMessageHandler(echoCtx *echo.Context) error {
 		return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
-	response, resErr := ch.CoachService.GenResponse(echoCtx.Request().Context(), claims.ID, req.Text)
+	response, resErr := ch.CoachService.ResponseGenerationOrchestrator(echoCtx.Request().Context(), claims.ID, req.Text)
 	if resErr != nil {
-		return resErr
+		return echoCtx.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate AI response"})
 	}
 
 	return echoCtx.JSON(http.StatusOK, map[string]string{"response": response})
-
 }

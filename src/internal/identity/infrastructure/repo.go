@@ -47,7 +47,7 @@ func (postDb *PostgresUserRepo) Create(ctx context.Context, user *domain.User) e
 }
 
 func (postDb *PostgresUserRepo) Update(ctx context.Context, user *domain.User) error {
-	obj := postDb.Save(user)
+	obj := postDb.WithContext(ctx).Save(user)
 	if obj.Error != nil {
 		return obj.Error
 	}
