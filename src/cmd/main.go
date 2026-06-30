@@ -11,14 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
+	coachhttp "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
 	"github.com/Aboody-Studios/ballr/src/internal/coach/infrastructure"
-	coachhandlers "github.com/Aboody-Studios/ballr/src/internal/coach/handlers/http"
 	identityapplication "github.com/Aboody-Studios/ballr/src/internal/identity/application"
 	identityhttp "github.com/Aboody-Studios/ballr/src/internal/identity/handlers/http"
 	identityinfrastructure "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
 	analysisapplication "github.com/Aboody-Studios/ballr/src/internal/match/application"
-	coachapplication "github.com/Aboody-Studios/ballr/src/internal/coach/application"
-	matchhandlers "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
+	matchhttp "github.com/Aboody-Studios/ballr/src/internal/match/handlers/http"
 	analysisinfrastructure "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
 	progressapplication "github.com/Aboody-Studios/ballr/src/internal/progress/application"
 	progresshttp "github.com/Aboody-Studios/ballr/src/internal/progress/handlers/http"
@@ -73,24 +73,23 @@ func main() {
 	storageRepo := analysisinfrastructure.NewStorageRepository(s3Client, os.Getenv("S3_BUCKET"))
 	matchRepo := &analysisinfrastructure.PostgresMatchRepository{DB: db}
 	uploadService := analysisapplication.NewUploadService(storageRepo, matchRepo)
-	uploadHandler := matchhandlers.NewUploadHandler(uploadService)
+	uploadHandler := matchhttp.NewUploadHandler(uploadService)
 	analysisRepo := &analysisinfrastructure.PostgresAnalysisRepository{DB: db}
 	redisJobQueue := analysisinfrastructure.NewRedisJobQueue(rdb)
 	analysisService := analysisapplication.NewAnalysisService(analysisRepo, matchRepo, redisJobQueue)
-	analysisHandler := matchhandlers.NewAnalysisHandler(analysisService)
+	analysisHandler := matchhttp.NewAnalysisHandler(analysisService)
 	analysisWorker := analysisinfrastructure.NewWorker(matchRepo, analysisRepo, redisJobQueue, storageRepo)
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	analysisWorker.Start(workerCtx)
 
 	// --- Coach ---
 	client, err := genai.NewClient(context.TODO(), &genai.ClientConfig{
-		APIKey:  os.Getenv("GOOGLE_AI_API_KEY"),
+		APIKey: os.Getenv("GOOGLE_AI_API_KEY"),
 	})
 	geminiCoach := infrastructure.GeminiCoach{Client: *client}
 	coachRepo := infrastructure.PostgresCoachRepo{DB: db}
 	coachService := coachapplication.NewCoachService(&coachRepo, &geminiCoach)
-	coachHandler := coachhandlers.CoachHandler{CoachService: coachService}
-
+	coachHandler := coachhttp.NewCoachHandler(coachService)
 
 	// --- Progress ---
 	progressRepo := &progressinfrastructure.PostgresProgressRepository{DB: db}
@@ -158,7 +157,7 @@ func main() {
 		log.Printf("asynq scheduler error: %v", err)
 	}
 	asynqMux := asynq.NewServeMux()
-	asynqMux.HandleFunc("batch_training_reminders", trainingReminderHandler.HandleBatchTrainingReminders)
+	asynqMux.HandleFunc("batch_training_reminders", trainingReminderHandler.BatchTrainingRemindersHandler)
 	if err := asynqServer.Start(asynqMux); err != nil {
 		log.Printf("asynq server initiation problem: %v", err)
 	}

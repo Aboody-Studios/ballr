@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
+//TODO!: Replace Generic usage with traditional API
+
 type PostgresUserRepo struct {
 	*gorm.DB
 }

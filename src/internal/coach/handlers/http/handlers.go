@@ -13,6 +13,12 @@ type CoachHandler struct {
 	CoachService application.CoachService
 }
 
+func NewCoachHandler(coachService application.CoachService) CoachHandler {
+	return CoachHandler{
+		CoachService: coachService,
+	}
+}
+
 func (ch CoachHandler) NewUserMessageHandler(echoCtx *echo.Context) error {
 	claims, err := delivery.ExtractToken(echoCtx)
 	if err != nil {

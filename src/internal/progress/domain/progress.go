@@ -82,8 +82,8 @@ type ProgressSummary struct {
 }
 
 type NotificationTarget struct {
-	ID                string
-	NotificationToken string
+	ID          string
+	DeviceToken string
 }
 
 type LeaderboardEntry struct {

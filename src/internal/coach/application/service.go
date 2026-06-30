@@ -16,7 +16,7 @@ type CoachService struct {
 
 func NewCoachService(coachRepo domain.CoachRepo, coachProvider domain.AICoachProvider) CoachService {
 	return CoachService{
-		CoachRepo: coachRepo,
+		CoachRepo:       coachRepo,
 		AICoachProvider: coachProvider,
 	}
 }

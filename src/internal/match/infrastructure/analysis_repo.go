@@ -7,11 +7,12 @@ import (
 	"gorm.io/gorm"
 )
 
+//TODO!: Remove Generic usage and use traditional API instead
+
 type PostgresAnalysisRepository struct {
 	*gorm.DB
 }
 
-// TODO!: Use ctx ?
 func (r *PostgresAnalysisRepository) Save(ctx context.Context, analysis *domain.AnalysisResult) error {
 	tx := r.DB.WithContext(ctx).Save(&analysis)
 	return tx.Error

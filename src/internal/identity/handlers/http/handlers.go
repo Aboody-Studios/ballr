@@ -10,10 +10,10 @@ import (
 )
 
 type IdentityHandler struct {
-	authService *application.Service
+	authService *application.IdentityService
 }
 
-func NewIdentityHandler(authService *application.Service) *IdentityHandler {
+func NewIdentityHandler(authService *application.IdentityService) *IdentityHandler {
 	return &IdentityHandler{authService: authService}
 }
 

@@ -21,7 +21,7 @@ var (
 	ErrProfileIncomplete  = errors.New("Profile not fully set up")
 )
 
-type Service struct {
+type IdentityService struct {
 	UserRepo        domain.UserRepository
 	OauthProvider   domain.OAuthProvider
 	RefreshStore    domain.RefreshTokenStore
@@ -29,8 +29,8 @@ type Service struct {
 	RefreshTokenTTL time.Duration
 }
 
-func NewService(repo domain.UserRepository, oauthProv domain.OAuthProvider, refreshStore domain.RefreshTokenStore) *Service {
-	return &Service{
+func NewService(repo domain.UserRepository, oauthProv domain.OAuthProvider, refreshStore domain.RefreshTokenStore) *IdentityService {
+	return &IdentityService{
 		UserRepo:        repo,
 		OauthProvider:   oauthProv,
 		RefreshStore:    refreshStore,
@@ -39,7 +39,7 @@ func NewService(repo domain.UserRepository, oauthProv domain.OAuthProvider, refr
 	}
 }
 
-func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token) (*domain.TokenPair, error) {
+func (s *IdentityService) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token) (*domain.TokenPair, error) {
 	googleUser, err := s.OauthProvider.FetchUserInfo(ctx, googleToken)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (s *Service) LoginWithGoogle(ctx context.Context, googleToken *oauth2.Token
 	return s.generateTokenPair(ctx, dbUser.ID, dbUser.Email)
 }
 
-func (s *Service) RefreshAccessToken(ctx context.Context, rawRefreshToken string) (*domain.TokenPair, error) {
+func (s *IdentityService) RefreshAccessToken(ctx context.Context, rawRefreshToken string) (*domain.TokenPair, error) {
 	stored, err := s.RefreshStore.Get(ctx, rawRefreshToken)
 	if err != nil {
 		return nil, ErrRefreshExpired
@@ -89,7 +89,7 @@ func (s *Service) RefreshAccessToken(ctx context.Context, rawRefreshToken string
 	return s.generateTokenPair(ctx, user.ID, user.Email)
 }
 
-func (s *Service) GetProfile(ctx context.Context, userID string) (*ProfileResponse, error) {
+func (s *IdentityService) GetProfile(ctx context.Context, userID string) (*ProfileResponse, error) {
 	user, err := s.UserRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (s *Service) GetProfile(ctx context.Context, userID string) (*ProfileRespon
 	}, nil
 }
 
-func (s *Service) CompleteProfile(ctx context.Context, userID string, req *OnboardingRequest) error {
+func (s *IdentityService) CompleteProfile(ctx context.Context, userID string, req *OnboardingRequest) error {
 	user, err := s.UserRepo.FindByID(ctx, userID)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func (s *Service) CompleteProfile(ctx context.Context, userID string, req *Onboa
 	return s.UserRepo.Update(ctx, user)
 }
 
-func (s *Service) generateTokenPair(ctx context.Context, userID, email string) (*domain.TokenPair, error) {
+func (s *IdentityService) generateTokenPair(ctx context.Context, userID, email string) (*domain.TokenPair, error) {
 	secretKey := os.Getenv("JWT_SECRET")
 
 	now := time.Now()

@@ -54,12 +54,12 @@ func (r *PostgresMatchRepository) UpdateStatus(ctx context.Context, matchID stri
 
 func (r *PostgresMatchRepository) GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*domain.Match, error) {
 	var matches []*domain.Match
-	
+
 	tx := r.DB.WithContext(ctx).Model(&domain.Match{}).Where("status = ? AND analysis_flag = false AND updated_at < ?").Find(matches)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
-	
+
 	return matches, nil
 }
 

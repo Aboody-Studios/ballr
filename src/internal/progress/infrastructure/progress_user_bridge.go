@@ -12,9 +12,11 @@ type ProgressUserBridgeDB struct {
 }
 
 func (pub *ProgressUserBridgeDB) GetEightPmAndTrainingDayUsers(ctx context.Context) ([]domain.NotificationTarget, error) {
-	var targets []domain.NotificationTarget
+	var targets []DeviceInfo
 
-	tx := pub.DB.WithContext(ctx).Table("users").Select("id, notification_token").Where(
+	tx := pub.DB.WithContext(ctx).Table("device_info").Select("device_info.id, device_info.device_token").
+	Joins("JOIN users ON device_info.user_id = users.id").
+	Where(
 		`timezone IS NOT NULL 
 		AND EXTRACT(HOUR FROM (NOW() AT TIME ZONE timezone)) = 20
 		AND training_days @> jsonb_build_array(EXTRACT(DOW FROM (NOW() AT TIME ZONE timezone)))`,
@@ -24,7 +26,17 @@ func (pub *ProgressUserBridgeDB) GetEightPmAndTrainingDayUsers(ctx context.Conte
 		return nil, tx.Error
 	}
 
-	return targets, nil
+	var nTargets []domain.NotificationTarget
+	for _, deviceInfo := range targets {
+		nTarget := domain.NotificationTarget{
+			ID:          deviceInfo.ID,
+			DeviceToken: deviceInfo.DeviceToken,
+		}
+
+		nTargets = append(nTargets, nTarget)
+	}
+
+	return nTargets, nil
 }
 
 func (pub *ProgressUserBridgeDB) GetUsernames(ctx context.Context, userIDs []string) (map[string]string, error) {
@@ -34,7 +46,7 @@ func (pub *ProgressUserBridgeDB) GetUsernames(ctx context.Context, userIDs []str
 	}
 	var userRowSlice = make([]userRow, 0, len(userIDs))
 
-	obj := pub.WithContext(ctx).Table("users").Where("id IN ?", userIDs).Select("id, username").Find(&userRowSlice)
+	obj := pub.WithContext(ctx).Table("user").Where("id IN ?", userIDs).Select("id, username").Find(&userRowSlice)
 	if obj.Error != nil {
 		return nil, obj.Error
 	}

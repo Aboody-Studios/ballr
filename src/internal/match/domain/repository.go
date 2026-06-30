@@ -32,7 +32,7 @@ type MatchRepository interface {
 }
 
 // AnalysisRepository defines the contract for analysis result persistence.
-// Analysis results are document-style data (JSONB in PostgreSQL or MongoDB).
+// Analysis results are document-style data (JSONB in PostgreSQL).
 type AnalysisRepository interface {
 	// Save persists analysis results for a match.
 	Save(ctx context.Context, analysis *AnalysisResult) error

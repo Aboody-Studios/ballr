@@ -15,6 +15,7 @@ require (
 	github.com/labstack/echo-jwt/v5 v5.0.1
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/redis/go-redis/v9 v9.18.0
+	github.com/sideshow/apns2 v0.25.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/genai v1.62.0
 	gorm.io/driver/postgres v1.6.0
@@ -45,6 +46,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
