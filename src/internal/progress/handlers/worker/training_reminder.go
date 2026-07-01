@@ -28,12 +28,12 @@ func (gs *TrainingReminderHandler) BatchTrainingRemindersHandler(ctx context.Con
 
 	//TODO!: Add abody's certs after signing up to the apple developer program
 	// client := apns2.NewClient(cert).Production()
-	
+
 	for _, target := range targets {
 		notification := &apns2.Notification{
 			DeviceToken: target.DeviceToken,
-			Payload: []byte(`{"aps":{"alert":"Did you train today ?"}}`),
-			Topic: "change to app id whenever there is one",
+			Payload:     []byte(`{"aps":{"alert":"Did you train today ?"}}`),
+			Topic:       "change to app id whenever there is one",
 		}
 		// res, err := client.Push(notification)
 

@@ -15,12 +15,12 @@ func (pub *ProgressUserBridgeDB) GetEightPmAndTrainingDayUsers(ctx context.Conte
 	var targets []DeviceInfo
 
 	tx := pub.DB.WithContext(ctx).Table("device_info").Select("device_info.id, device_info.device_token").
-	Joins("JOIN users ON device_info.user_id = users.id").
-	Where(
-		`timezone IS NOT NULL 
+		Joins("JOIN users ON device_info.user_id = users.id").
+		Where(
+			`timezone IS NOT NULL 
 		AND EXTRACT(HOUR FROM (NOW() AT TIME ZONE timezone)) = 20
 		AND training_days @> jsonb_build_array(EXTRACT(DOW FROM (NOW() AT TIME ZONE timezone)))`,
-	).Scan(&targets)
+		).Scan(&targets)
 
 	if tx.Error != nil {
 		return nil, tx.Error

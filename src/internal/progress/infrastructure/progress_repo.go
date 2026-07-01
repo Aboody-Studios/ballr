@@ -12,14 +12,13 @@ type PostgresProgressRepository struct {
 }
 
 func (r *PostgresProgressRepository) Save(ctx context.Context, progress *domain.Progress) error {
-	tx := r.DB.Save(progress)
+	tx := r.DB.WithContext(ctx).Save(progress)
 	return tx.Error
 }
 
 func (r *PostgresProgressRepository) FindByUserID(ctx context.Context, userID string) (*domain.Progress, error) {
-	progress, err := gorm.G[domain.Progress](r.DB).Where("user_id = ?", userID).First(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &progress, nil
+	var progress domain.Progress
+	tx := r.DB.WithContext(ctx).Model(domain.Progress{}).Where("user_id = ?", userID).Find(&progress)
+	
+	return &progress, tx.Error
 }
