@@ -7,6 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
+//TODO!: Use infrastructure layer structs
+
 type PostgresAchievementRepository struct {
 	*gorm.DB
 }

@@ -7,6 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
+//TODO!: Use infrastructure layer structs
+
 type PostgresProgressRepository struct {
 	*gorm.DB
 }
@@ -19,6 +21,6 @@ func (r *PostgresProgressRepository) Save(ctx context.Context, progress *domain.
 func (r *PostgresProgressRepository) FindByUserID(ctx context.Context, userID string) (*domain.Progress, error) {
 	var progress domain.Progress
 	tx := r.DB.WithContext(ctx).Model(domain.Progress{}).Where("user_id = ?", userID).Find(&progress)
-	
+
 	return &progress, tx.Error
 }

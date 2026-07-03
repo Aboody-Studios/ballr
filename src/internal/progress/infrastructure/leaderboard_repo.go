@@ -6,6 +6,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+//TODO!: Use infrastructure layer structs
+
 type RedisLeaderboardRepo struct {
 	Client *redis.Client
 }

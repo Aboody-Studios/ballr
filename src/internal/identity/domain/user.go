@@ -30,21 +30,19 @@ var WeekDayTranslation = map[string]time.Weekday{
 	"SATURDAY":  time.Saturday,
 }
 
-// TODO!: Remove gorm
 type User struct {
-	ID                string
-	Email             string `gorm:"uniqueIndex"`
-	Username          string
-	AvatarURL         string
-	OAuthProvider     string
-	FullName          string
-	BirthDate         time.Time
-	Footedness        Footedness
-	Goals             string
-	NotifiactionToken string
-	CreatedAt         time.Time
-	TrainingDays      []TrainingDay `gorm:"type:jsonb;serializer:json"`
-	Timezone          string
+	ID            string
+	Email         string
+	Username      string
+	AvatarURL     string
+	OAuthProvider string
+	FullName      string
+	BirthDate     time.Time
+	Footedness    Footedness
+	Goals         string
+	CreatedAt     time.Time
+	TrainingDays  []TrainingDay
+	Timezone      string
 }
 
 type JWTCustomClaims struct {

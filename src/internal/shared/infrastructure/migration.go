@@ -1,7 +1,6 @@
 package infrastructure
 
 import (
-	coachdomain "github.com/Aboody-Studios/ballr/src/internal/coach/domain"
 	identitydomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	analysisdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
 	progressdomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
@@ -12,7 +11,6 @@ func RunMigrations(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&identitydomain.User{},
 		&analysisdomain.Match{},
-		&coachdomain.Conversation{},
 		&progressdomain.Progress{},
 		&progressdomain.Achievement{},
 		&progressdomain.EventLog{},

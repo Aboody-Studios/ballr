@@ -32,20 +32,19 @@ const (
 )
 
 // Match is the aggregate root for the Analysis bounded context.
-// TODO!: Remove gorm
 type Match struct {
-	ID             string          `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	User           domain.User     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID         string          `gorm:"index;not null"`
-	ShirtNumber    uint            `gorm:"not null"`
-	PositionPlayed Position        `gorm:"type:varchar(20)"`
-	VideoURL       string          `gorm:"type:varchar(100)"`
-	Status         MatchStatus     `gorm:"type:varchar(20);index;default:UPLOADING"`
-	AnalysisFlag   bool            `gorm:"default:false"`
-	AnalysisResult *AnalysisResult `gorm:"type:jsonb;serializer:json"`
-	CreatedAt      time.Time       `gorm:"autoCreateTime"`
-	UpdatedAt      time.Time       `gorm:"autoUpdateTime"`
-	Metadata       MatchMetadata   `gorm:"type:jsonb;serializer:json"`
+	ID             string
+	User           domain.User
+	UserID         string
+	ShirtNumber    uint
+	PositionPlayed Position
+	VideoURL       string
+	Status         MatchStatus
+	AnalysisFlag   bool
+	AnalysisResult *AnalysisResult
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Metadata       MatchMetadata
 }
 
 type MatchMetadata struct {

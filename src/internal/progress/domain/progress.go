@@ -10,28 +10,26 @@ import (
 
 // Progress is the aggregate root for the Progress bounded context.
 // It represents a user's gamification state including points, streaks, and activity tracking.
-// TODO!: Remove gorm
 type Progress struct {
-	ID            string `gorm:"primaryKey"`
-	UserID        string `gorm:"uniqueIndex;not null"`
-	TotalPoints   int    `gorm:"default:0"`
-	CurrentStreak int    `gorm:"default:0"`
+	ID            string
+	UserID        string
+	TotalPoints   int
+	CurrentStreak int
 	LastActive    time.Time
-	CreatedAt     time.Time `gorm:"autoCreateTime"`
-	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Achievement represents a badge or milestone unlocked by a user.
 // Achievements are value objects that are part of the Progress aggregate.
-// TODO!: Remove gorm
 type Achievement struct {
-	ID          string   `gorm:"primaryKey"`
-	Progress    Progress `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	ID          string
+	Progress    Progress
 	ProgressID  string
-	User        domain.User     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID      string          `gorm:"uniqueIndex:idx_user_achievement;not null"`
-	Type        AchievementType `gorm:"uniqueIndex:idx_user_achievement;not null"`
-	UnlockedAt  time.Time       `gorm:"autoCreateTime"`
+	User        domain.User
+	UserID      string
+	Type        AchievementType
+	UnlockedAt  time.Time
 	PointsValue int
 	Badge       bool
 }
@@ -52,13 +50,13 @@ const (
 )
 
 type EventLog struct {
-	User          domain.User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	UserID        string           `gorm:"index:idx_user_event;not null"`
-	Type          events.EventType `gorm:"index:idx_user_event;not null"`
+	User          domain.User
+	UserID        string
+	Type          events.EventType
 	PointsAwarded int
-	ID            string         `gorm:"primaryKey"`
-	Timestamp     time.Time      `gorm:"index"`
-	Metadata      map[string]any `gorm:"type:jsonb;serializer:json"`
+	ID            string
+	Timestamp     time.Time
+	Metadata      map[string]any
 }
 
 type EventSummary struct {

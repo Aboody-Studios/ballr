@@ -9,6 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
+//TODO!: Use infrastructure layer structs
+
 type PostgresMatchRepository struct {
 	*gorm.DB
 }

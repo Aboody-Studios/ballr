@@ -8,6 +8,7 @@ import (
 )
 
 //TODO!: Remove Generic usage and use traditional API instead
+//TODO!: Use infrastructure layer structs
 
 type PostgresAnalysisRepository struct {
 	*gorm.DB
