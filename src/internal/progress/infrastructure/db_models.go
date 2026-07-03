@@ -12,7 +12,7 @@ type DeviceInfo struct {
 	ID          string
 	UserID      string
 	DeviceToken string
-}
+}	
 
 type Progress struct {
 	ID            string `gorm:"primaryKey"`

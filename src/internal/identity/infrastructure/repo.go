@@ -16,14 +16,13 @@ type PostgresUserRepo struct {
 
 func (postDB *PostgresUserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
-	tx := postDB.WithContext(ctx).Model(User{}).Where("email = ?", email).Find(&user)
+	tx := postDB.WithContext(ctx).Model(domain.User{}).Where("email = ?", email).Find(&user)
 
 	return &user, tx.Error
 }
 
 func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
-	// TODO!: Change to to accept result as domain.User and then fill infrastracture.User variable
-	user, err := gorm.G[User](postDB.DB).Where("id = ?", id).First(ctx)
+	user, err := gorm.G[domain.User](postDB.DB).Where("id = ?", id).First(ctx)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -35,15 +34,15 @@ func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domai
 	return &user, nil
 }
 
-func (postDb *PostgresUserRepo) Create(ctx context.Context, user *User) error {
-	if err := gorm.G[User](postDb.DB).Create(ctx, user); err != nil {
+func (postDb *PostgresUserRepo) Create(ctx context.Context, user *domain.User) error {
+	if err := gorm.G[domain.User](postDb.DB).Create(ctx, user); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (postDb *PostgresUserRepo) Update(ctx context.Context, user *User) error {
+func (postDb *PostgresUserRepo) Update(ctx context.Context, user *domain.User) error {
 	tx := postDb.WithContext(ctx).Save(user)
 	return tx.Error
 }
