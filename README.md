@@ -8,7 +8,7 @@ The core mission of Ballr is to bridge the gap between video recording and actio
 
 ## High-Level Architecture
 
-Ballr utilizes a multi-domain hexagonal architecture implemented in Go for the backend, an asynchronous Python-based Computer Vision pipeline, and a Flutter mobile client. The backend is organized into four primary domains: **Identity**, **Match**, **Coach**, and **Progress**.
+Ballr utilizes a multi-domain hexagonal architecture implemented in Go for the backend, an asynchronous Python-based Computer Vision pipeline, and a Swift mobile client (to be implemented). The backend is organized into four primary domains: **Identity**, **Match**, **Coach**, and **Progress**.
 
 ## Key Domains
 
