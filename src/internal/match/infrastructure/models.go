@@ -7,7 +7,7 @@ import (
 	matchdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
 )
 
-// To connect Match with User, do I need to pass in the whole User struct or just the foreign key ?
+// TODO!: See if connecting Match with User requires passing the whole User struct or just the UserID as a foreign key ?
 type Match struct {
 	ID             string                      `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	User           userdomain.User             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`

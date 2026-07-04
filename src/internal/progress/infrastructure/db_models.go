@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"time"
 
-	userdomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	progressdomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 )
@@ -12,7 +11,7 @@ type DeviceInfo struct {
 	ID          string
 	UserID      string
 	DeviceToken string
-}	
+}
 
 type Progress struct {
 	ID            string `gorm:"primaryKey"`
@@ -25,12 +24,9 @@ type Progress struct {
 }
 
 //TODO!: See if passing User struct is necessary or not
-
 type Achievement struct {
 	ID          string                         `gorm:"primaryKey"`
-	Progress    Progress                       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	ProgressID  string
-	User        userdomain.User                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserID      string                         `gorm:"uniqueIndex:idx_user_achievement;not null"`
 	Type        progressdomain.AchievementType `gorm:"uniqueIndex:idx_user_achievement;not null"`
 	UnlockedAt  time.Time                      `gorm:"autoCreateTime"`
@@ -39,7 +35,6 @@ type Achievement struct {
 }
 
 type EventLog struct {
-	User          userdomain.User  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserID        string           `gorm:"index:idx_user_event;not null"`
 	Type          events.EventType `gorm:"index:idx_user_event;not null"`
 	PointsAwarded int

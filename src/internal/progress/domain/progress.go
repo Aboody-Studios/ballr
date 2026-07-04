@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
 	"github.com/google/uuid"
 )
@@ -24,9 +23,7 @@ type Progress struct {
 // Achievements are value objects that are part of the Progress aggregate.
 type Achievement struct {
 	ID          string
-	Progress    Progress
 	ProgressID  string
-	User        domain.User
 	UserID      string
 	Type        AchievementType
 	UnlockedAt  time.Time
@@ -50,7 +47,6 @@ const (
 )
 
 type EventLog struct {
-	User          domain.User
 	UserID        string
 	Type          events.EventType
 	PointsAwarded int

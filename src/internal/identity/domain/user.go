@@ -39,7 +39,6 @@ type User struct {
 	FullName      string
 	BirthDate     time.Time
 	Footedness    Footedness
-	Goals         string
 	CreatedAt     time.Time
 	TrainingDays  []TrainingDay
 	Timezone      string
@@ -59,7 +58,6 @@ func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate tim
 		FullName:      fullName,
 		BirthDate:     birthDate,
 		Footedness:    footedness,
-		Goals:         goals,
 		CreatedAt:     time.Now(),
 	}
 	return user
@@ -68,7 +66,6 @@ func NewUser(id, email, oauthProvider, avatarURL, fullName string, birthDate tim
 func (u *User) UpdateProfile(fullName string, footedness Footedness, goals string) {
 	u.FullName = fullName
 	u.Footedness = footedness
-	u.Goals = goals
 }
 
 func (u *User) CalculateAge() int {

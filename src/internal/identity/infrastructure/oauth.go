@@ -17,7 +17,7 @@ import (
 // GoogleOauthConfig is available for test override.
 // In production it is lazy-initialised by getGoogleOAuthConfig.
 
-//TODO!: Use infrastructure layer structs here
+// TODO!: Use infrastructure layer structs here
 var GoogleOauthConfig *oauth2.Config
 
 var googleOauthOnce sync.Once

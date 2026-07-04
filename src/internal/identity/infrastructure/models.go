@@ -15,7 +15,6 @@ type User struct {
 	FullName      string
 	BirthDate     time.Time
 	Footedness    domain.Footedness
-	Goals         string
 	CreatedAt     time.Time
 	TrainingDays  []domain.TrainingDay `gorm:"type:jsonb;serializer:json"`
 	Timezone      string
