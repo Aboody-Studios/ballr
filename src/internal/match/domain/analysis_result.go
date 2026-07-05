@@ -6,7 +6,6 @@ import "time"
 type AnalysisResult struct {
 	ID              string          `json:"analysis_id" gorm:"index"`
 	MatchID         string          `json:"match_id"`
-	Match           Match           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	GeneratedAt     time.Time       `json:"generated_at"`
 	Summary         AnalysisSummary `json:"summary" gorm:"type:jsonb;serializer:json"`
 	Heatmaps        Heatmaps        `json:"heatmaps" gorm:"type:jsonb;serializer:json"`

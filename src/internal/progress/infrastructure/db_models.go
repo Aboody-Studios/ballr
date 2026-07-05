@@ -23,9 +23,9 @@ type Progress struct {
 	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
 }
 
-//TODO!: See if passing User struct is necessary or not
+// TODO!: See if passing User struct is necessary or not
 type Achievement struct {
-	ID          string                         `gorm:"primaryKey"`
+	ID          string `gorm:"primaryKey"`
 	ProgressID  string
 	UserID      string                         `gorm:"uniqueIndex:idx_user_achievement;not null"`
 	Type        progressdomain.AchievementType `gorm:"uniqueIndex:idx_user_achievement;not null"`

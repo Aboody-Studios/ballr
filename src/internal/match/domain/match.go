@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
 )
 
 // I want to admit that go really looks so good and makes me feel like i was fighting something in rust and all those structs are insane
@@ -34,7 +33,6 @@ const (
 // Match is the aggregate root for the Analysis bounded context.
 type Match struct {
 	ID             string
-	User           domain.User
 	UserID         string
 	ShirtNumber    uint
 	PositionPlayed Position
