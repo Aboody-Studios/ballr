@@ -73,9 +73,9 @@ func (m *Match) MarkAnalysisInit() {
 }
 
 // CanViewResults returns true if the analysis's associated match is completed.
-func (ar *AnalysisResult) CanViewResults(matchID string) bool {
+/*func (ar *AnalysisResult) CanViewResults(matchID string) bool {
 	return ar.Match.Status == MatchStatusCompleted && ar.Match.Status != ""
-}
+}*/
 
 // SetAnalysisResult transitions to COMPLETED and stores the results.
 // TODO!: Set analysis result to analysis table and not match table

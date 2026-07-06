@@ -27,6 +27,7 @@ import (
 	shareddelivery "github.com/Aboody-Studios/ballr/src/internal/shared/delivery"
 	sharedinfrastructure "github.com/Aboody-Studios/ballr/src/internal/shared/infrastructure"
 	"github.com/Aboody-Studios/ballr/src/pkg/events"
+	"github.com/Aboody-Studios/ballr/src/pkg/seed"
 	"github.com/Aboody-Studios/ballr/src/pkg/validator"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -57,11 +58,11 @@ func main() {
 	}
 
 	// --- Identity ---
-	postgresRepo := identityinfrastructure.PostgresUserRepo{DB: db}
-	oauthProvider := identityinfrastructure.GoogleOAuthAPI{}
+	userRepo := &identityinfrastructure.PostgresUserRepo{DB: db}
+	oauthProvider := &identityinfrastructure.GoogleOAuthAPI{}
 	refreshStore := identityinfrastructure.NewRedisRefreshTokenStore(rdb, 15*24*time.Hour)
 
-	identityService := identityapplication.NewService(&postgresRepo, &oauthProvider, refreshStore)
+	identityService := identityapplication.NewService(userRepo, oauthProvider, refreshStore)
 	identityHandler := identityhttp.NewIdentityHandler(identityService)
 
 	// --- Analysis ---
@@ -87,8 +88,8 @@ func main() {
 		APIKey: os.Getenv("GOOGLE_AI_API_KEY"),
 	})
 	geminiCoach := infrastructure.GeminiCoach{Client: *client}
-	coachRepo := infrastructure.PostgresCoachRepo{DB: db}
-	coachService := coachapplication.NewCoachService(&coachRepo, &geminiCoach)
+	coachRepo := &infrastructure.PostgresCoachRepo{DB: db}
+	coachService := coachapplication.NewCoachService(coachRepo, &geminiCoach)
 	coachHandler := coachhttp.NewCoachHandler(coachService)
 
 	// --- Progress ---
@@ -150,6 +151,11 @@ func main() {
 		EventPublisher: eventPublisher,
 	}
 	go sweeper.SweepStuckMatches(context.Background())
+
+	// --- fill db with dummy data ---
+	if err := seed.FillDB(coachRepo, progressRepo, matchRepo, userRepo, achievementRepo, eventLogRepo); err != nil {
+		log.Printf("database seedning error: %v", err)
+	}
 
 	// --- Asynq ---
 	asynqServer, asynqRedisClient := sharedinfrastructure.InitiateAsynqServer(*rdb)

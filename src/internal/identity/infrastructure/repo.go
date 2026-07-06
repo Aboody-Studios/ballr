@@ -15,14 +15,15 @@ type PostgresUserRepo struct {
 }
 
 func (postDB *PostgresUserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-	var user domain.User
-	tx := postDB.WithContext(ctx).Model(domain.User{}).Where("email = ?", email).Find(&user)
+	var user User
+	tx := postDB.WithContext(ctx).Model(User{}).Where("email = ?", email).Find(&user)
 
+	//TODO!: Convert to domain.User before returning
 	return &user, tx.Error
 }
 
 func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
-	user, err := gorm.G[domain.User](postDB.DB).Where("id = ?", id).First(ctx)
+	user, err := gorm.G[User](postDB.DB).Where("id = ?", id).First(ctx)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -31,11 +32,14 @@ func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domai
 		return nil, err
 	}
 
+	//TODO!: Convert to domain.User before returning
+
 	return &user, nil
 }
 
 func (postDb *PostgresUserRepo) Create(ctx context.Context, user *domain.User) error {
-	if err := gorm.G[domain.User](postDb.DB).Create(ctx, user); err != nil {
+	//TODO!: Convert to user infra layer User struct before passing it to Create()
+	if err := gorm.G[User](postDb.DB).Create(ctx, user); err != nil {
 		return err
 	}
 
@@ -43,6 +47,7 @@ func (postDb *PostgresUserRepo) Create(ctx context.Context, user *domain.User) e
 }
 
 func (postDb *PostgresUserRepo) Update(ctx context.Context, user *domain.User) error {
+	//TODO!: Convert to infra layer user struct before passing to Save()
 	tx := postDb.WithContext(ctx).Save(user)
 	return tx.Error
 }

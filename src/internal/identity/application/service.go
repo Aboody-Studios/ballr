@@ -101,7 +101,6 @@ func (s *IdentityService) GetProfile(ctx context.Context, userID string) (*Profi
 		FullName:      user.FullName,
 		AvatarURL:     user.AvatarURL,
 		Footedness:    user.Footedness,
-		Goals:         user.Goals,
 		BirthDate:     user.BirthDate,
 		OAuthProvider: user.OAuthProvider,
 		CreatedAt:     user.CreatedAt,
@@ -117,7 +116,6 @@ func (s *IdentityService) CompleteProfile(ctx context.Context, userID string, re
 	user.FullName = req.FullName
 	user.BirthDate = req.BirthDate
 	user.Footedness = req.Footedness
-	user.Goals = req.Goals
 	user.TrainingDays = req.TrainingDays
 
 	return s.UserRepo.Update(ctx, user)

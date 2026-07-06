@@ -2,7 +2,6 @@ package domain
 
 import (
 	"time"
-
 )
 
 // I want to admit that go really looks so good and makes me feel like i was fighting something in rust and all those structs are insane

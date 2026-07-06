@@ -1,18 +1,18 @@
 package infrastructure
 
 import (
-	identitydomain "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
-	analysisdomain "github.com/Aboody-Studios/ballr/src/internal/match/domain"
-	progressdomain "github.com/Aboody-Studios/ballr/src/internal/progress/domain"
+	identityinfra "github.com/Aboody-Studios/ballr/src/internal/identity/infrastructure"
+	analysisinfra "github.com/Aboody-Studios/ballr/src/internal/match/infrastructure"
+	progressinfra "github.com/Aboody-Studios/ballr/src/internal/progress/infrastructure"
 	"gorm.io/gorm"
 )
 
 func RunMigrations(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&identitydomain.User{},
-		&analysisdomain.Match{},
-		&progressdomain.Progress{},
-		&progressdomain.Achievement{},
-		&progressdomain.EventLog{},
+		&identityinfra.User{},
+		&analysisinfra.Match{},
+		&progressinfra.Progress{},
+		&progressinfra.Achievement{},
+		&progressinfra.EventLog{},
 	)
 }
