@@ -14,6 +14,18 @@ func FromProgressInfraToDomain(progressInfra Progress) *domain.Progress {
 	}
 }
 
+func FromProgressDomainToInfra(progressDomain *domain.Progress) *Progress {
+	return &Progress{
+		ID:            progressDomain.ID,
+		UserID:        progressDomain.UserID,
+		TotalPoints:   progressDomain.TotalPoints,
+		CurrentStreak: progressDomain.CurrentStreak,
+		LastActive:    progressDomain.LastActive,
+		CreatedAt:     progressDomain.CreatedAt,
+		UpdatedAt:     progressDomain.UpdatedAt,
+	}
+}
+
 func FromAchievInfraToDomain(achievInfa Achievement) *domain.Achievement {
 	return &domain.Achievement{
 		ID:          achievInfa.ID,

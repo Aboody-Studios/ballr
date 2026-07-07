@@ -1,6 +1,8 @@
 package infrastructure
 
-import "github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+import (
+	"github.com/Aboody-Studios/ballr/src/internal/identity/domain"
+)
 
 func FromUserInfraToDomain(userInfra User) *domain.User {
 	userDomainTDays := make([]domain.TrainingDay, len(userInfra.TrainingDays))
@@ -20,5 +22,26 @@ func FromUserInfraToDomain(userInfra User) *domain.User {
 		CreatedAt:     userInfra.CreatedAt,
 		TrainingDays:  userDomainTDays,
 		OAuthProvider: userInfra.OAuthProvider,
+	}
+}
+
+func FromUserDomainToInfra(userDomain *domain.User) *User {
+	userInfraTDays := make([]TrainingDay, len(userDomain.TrainingDays))
+	for i, day := range userDomain.TrainingDays {
+		userInfraTDays[i] = TrainingDay(day)
+	}
+
+	return &User{
+		ID:            userDomain.ID,
+		Email:         userDomain.Email,
+		Username:      userDomain.Username,
+		AvatarURL:     userDomain.AvatarURL,
+		FullName:      userDomain.FullName,
+		Footedness:    Footedness(userDomain.Footedness),
+		BirthDate:     userDomain.BirthDate,
+		Timezone:      userDomain.Timezone,
+		CreatedAt:     userDomain.CreatedAt,
+		TrainingDays:  userInfraTDays,
+		OAuthProvider: userDomain.OAuthProvider,
 	}
 }

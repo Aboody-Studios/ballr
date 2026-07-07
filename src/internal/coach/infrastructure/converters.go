@@ -11,3 +11,13 @@ func FromChatInfraToDomain(chatMsgInfra ChatMessage) domain.ChatMessage {
 		CreatedAt: chatMsgInfra.CreatedAt,
 	}
 }
+
+func FromChatDomainToInfra(chatMsgDomain domain.ChatMessage) ChatMessage {
+	return ChatMessage{
+		ID: chatMsgDomain.ID,
+		UserID: chatMsgDomain.UserID,
+		Role: chatMsgDomain.Role,
+		Content: chatMsgDomain.Content,
+		CreatedAt: chatMsgDomain.CreatedAt,
+	}
+}

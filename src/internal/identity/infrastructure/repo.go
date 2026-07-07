@@ -16,10 +16,10 @@ type PostgresUserRepo struct {
 
 func (postDB *PostgresUserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user User
-	tx := postDB.WithContext(ctx).Model(User{}).Where("email = ?", email).Find(&user)
+	tx := postDB.WithContext(ctx).Model(User{}).Where("email = ?", email).First(&user)
 
-	//TODO!: Convert to domain.User before returning
-	return &user, tx.Error
+	userDomain := FromUserInfraToDomain(user)
+	return userDomain, tx.Error
 }
 
 func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
@@ -32,14 +32,14 @@ func (postDB *PostgresUserRepo) FindByID(ctx context.Context, id string) (*domai
 		return nil, err
 	}
 
-	//TODO!: Convert to domain.User before returning
+	userDomain := FromUserInfraToDomain(user)
 
-	return &user, nil
+	return userDomain, nil
 }
 
 func (postDb *PostgresUserRepo) Create(ctx context.Context, user *domain.User) error {
-	//TODO!: Convert to user infra layer User struct before passing it to Create()
-	if err := gorm.G[User](postDb.DB).Create(ctx, user); err != nil {
+	userInfra := FromUserDomainToInfra(user)
+	if err := gorm.G[User](postDb.DB).Create(ctx, userInfra); err != nil {
 		return err
 	}
 
@@ -47,7 +47,8 @@ func (postDb *PostgresUserRepo) Create(ctx context.Context, user *domain.User) e
 }
 
 func (postDb *PostgresUserRepo) Update(ctx context.Context, user *domain.User) error {
-	//TODO!: Convert to infra layer user struct before passing to Save()
-	tx := postDb.WithContext(ctx).Save(user)
+	userInfra := FromUserDomainToInfra(user)
+	tx := postDb.WithContext(ctx).Model(userInfra).Save(userInfra)
+
 	return tx.Error
 }
