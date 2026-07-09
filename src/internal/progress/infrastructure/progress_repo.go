@@ -13,7 +13,7 @@ type PostgresProgressRepository struct {
 
 func (r *PostgresProgressRepository) Save(ctx context.Context, progress *domain.Progress) error {
 	progressInfra := FromProgressDomainToInfra(progress)
-	tx := r.DB.WithContext(ctx).Model(Progress{}).Save(progressInfra)
+	tx := r.DB.WithContext(ctx).Model(Progress{}).Create(&progressInfra)
 
 	return tx.Error
 }

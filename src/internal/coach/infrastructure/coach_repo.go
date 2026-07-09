@@ -16,7 +16,7 @@ func (pcr *PostgresCoachRepo) GetChatHistory(ctx context.Context, userID string)
 
 	// This fetches the messages reversed.
 	tx := pcr.WithContext(ctx).Table("chat_message").Where("user_id = ?", userID).
-	Order("created_at DESC").Limit(10).Find(&chat_messages)
+		Order("created_at DESC").Limit(10).Find(&chat_messages)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

@@ -54,7 +54,7 @@ func (r *PostgresMatchRepository) FindByUserID(ctx context.Context, userID strin
 	return matchesDom, nil
 }
 
-func (r *PostgresMatchRepository) UpdateStatus(ctx context.Context, matchID string, status MatchStatus) error {
+func (r *PostgresMatchRepository) UpdateStatus(ctx context.Context, matchID string, status domain.MatchStatus) error {
 	tx := r.DB.WithContext(ctx).Model(Match{}).Where("id = ?", matchID).Update("status", string(status))
 	return tx.Error
 }
@@ -62,7 +62,7 @@ func (r *PostgresMatchRepository) UpdateStatus(ctx context.Context, matchID stri
 func (r *PostgresMatchRepository) GetStuckMatches(ctx context.Context, cutOffTime time.Time) ([]*domain.Match, error) {
 	var matches []*Match
 
-	tx := r.DB.WithContext(ctx).Model(Match{}).Where("status = ? AND analysis_flag = false AND updated_at < ?").Find(&matches)
+	tx := r.DB.WithContext(ctx).Model(Match{}).Where("status = 'PROCESSING' AND analysis_flag = false AND updated_at < ?", cutOffTime).Find(&matches)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
