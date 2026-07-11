@@ -21,7 +21,7 @@ func (r *PostgresMatchRepository) Save(ctx context.Context, match *domain.Match)
 	}
 
 	matchInfra := FromMatchDomainToInfra(*match)
-	tx := r.DB.WithContext(ctx).Model(Match{}).Save(matchInfra)
+	tx := r.DB.WithContext(ctx).Model(Match{}).Create(&matchInfra)
 	return tx.Error
 }
 

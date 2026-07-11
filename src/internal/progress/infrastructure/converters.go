@@ -47,3 +47,14 @@ func FromEventlogInfraToDomain(eventLog EventLog) *domain.EventLog {
 		Timestamp:     eventLog.Timestamp,
 	}
 }
+
+func FromEventLogDomainToInfra(eventLog *domain.EventLog) *EventLog {
+	return &EventLog{
+		UserID: eventLog.UserID,
+		Type: eventLog.Type,
+		PointsAwarded: eventLog.PointsAwarded,
+		ID: eventLog.ID,
+		Timestamp: eventLog.Timestamp,
+		Metadata: eventLog.Metadata,
+	}
+}

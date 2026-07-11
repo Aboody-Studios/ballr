@@ -31,7 +31,7 @@ func (pcr *PostgresCoachRepo) GetChatHistory(ctx context.Context, userID string)
 
 func (pcr *PostgresCoachRepo) SaveMessage(ctx context.Context, msg domain.ChatMessage) error {
 	msgInfra := FromChatDomainToInfra(msg)
-	tx := pcr.WithContext(ctx).Model(ChatMessage{}).Create(&msgInfra)
+	tx := pcr.DB.WithContext(ctx).Model(ChatMessage{}).Create(&msgInfra)
 	if tx.Error != nil {
 		return tx.Error
 	}
